@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { prisma } from './config/db';
+import templateRoutes from './routes/template.routes';
 
 dotenv.config();
 
@@ -24,6 +25,8 @@ app.get('/api/health', async (_req, res) => {
     res.status(500).json({ status: 'error', error: (error as Error).message });
   }
 });
+
+app.use('/api', templateRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor de Softlab corriendo en http://localhost:${PORT}`);

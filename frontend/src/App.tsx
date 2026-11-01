@@ -1,12 +1,8 @@
 import './App.css'
+import { ReportTemplatePage } from './pages/ReportTemplatePage'
 
 function App() {
-  return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Softlab - Sistema de Gestión de Laboratorios</h1>
-      <p>Bienvenido al sistema. Frontend iniciado correctamente.</p>
-    </div>
-  );
+  return <ReportTemplatePage />;
 }
 
 export default App;

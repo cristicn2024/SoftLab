@@ -79,6 +79,7 @@ model Branch {
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   users     User[]
   orders    Order[]
+  reportTemplates ReportTemplate[]
 
   @@map("branches")
 }
@@ -149,6 +150,8 @@ model Order {
   patient     Patient     @relation(fields: [patientId], references: [id])
   items       OrderItem[]
   samples     Sample[]
+  orderReports OrderReport[]
+
 
   @@map("orders")
 }
@@ -197,4 +200,51 @@ model TestResult {
   validator   User?        @relation(fields: [validatedBy], references: [id], onDelete: SetNull)
 
   @@map("test_results")
+}
+
+model ReportTemplate {
+  id            Int      @id @default(autoincrement())
+  tenantId      Int      @map("tenant_id")
+  name          String   @db.VarChar(100)
+  studyType     String?  @map("study_type") @db.VarChar(50) // Ej: 'biometria', 'urianalisis' o NULL para general
+  branchId      Int?     @map("branch_id")
+  version       Int      @default(1)
+  isDefault     Boolean  @default(false) @map("is_default")
+  
+  // Branding y Personalización
+  primaryColor  String   @default("#0f766e") @map("primary_color") @db.VarChar(10)
+  logoUrl       String?  @map("logo_url") @db.VarChar(255)
+  watermarkUrl  String?  @map("watermark_url") @db.VarChar(255)
+  signatureUrl  String?  @map("signature_url") @db.VarChar(255)
+  chemistName   String?  @map("chemist_name") @db.VarChar(150)
+  chemistCedula String?  @map("chemist_cedula") @db.VarChar(50)
+  
+  headerText    String?  @map("header_text") @db.Text
+  footerText    String?  @map("footer_text") @db.Text
+  disclaimer    String?  @db.Text
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  orderReports  OrderReport[]
+
+  @@map("report_templates")
+}
+
+model OrderReport {
+  id         Int      @id @default(autoincrement())
+  tenantId   Int      @map("tenant_id")
+  orderId    Int      @map("order_id")
+  templateId Int      @map("template_id")
+  qrToken    String   @unique @map("qr_token") @db.VarChar(100)
+  pdfUrl     String?  @map("pdf_url") @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order      Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  template   ReportTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("order_reports")
 }

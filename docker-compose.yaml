@@ -6,7 +6,7 @@ services:
     container_name: softlab_mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD: 78357Cas
       MYSQL_DATABASE: softlab_db
     ports:
       - "3306:3306"

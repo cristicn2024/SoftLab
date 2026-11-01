@@ -3,3 +3,4 @@ dist/
 coverage/
 .env
 src/generado/
+/generated/prisma

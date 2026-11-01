@@ -1,0 +1,200 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantStatus {
+  active
+  suspended
+  inactive
+}
+
+enum UserRole {
+  admin
+  receptionist
+  chemist
+  doctor
+}
+
+enum Gender {
+  M
+  F
+  Other
+}
+
+enum OrderStatus {
+  pending
+  in_process
+  completed
+  cancelled
+}
+
+enum SampleStatus {
+  collected
+  received
+  rejected
+  processed
+}
+
+enum ResultStatus {
+  captured
+  validated
+}
+
+model Tenant {
+  id          Int          @id @default(autoincrement())
+  name        String       @db.VarChar(150)
+  subdomain   String       @unique @db.VarChar(50)
+  status      TenantStatus @default(active)
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  branches    Branch[]
+  users       User[]
+  patients    Patient[]
+  tests       TestCatalog[]
+  orders      Order[]
+  samples     Sample[]
+  testResults TestResult[]
+
+  @@map("tenants")
+}
+
+model Branch {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @map("tenant_id")
+  name      String   @db.VarChar(100)
+  address   String?  @db.VarChar(255)
+  phone     String?  @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users     User[]
+  orders    Order[]
+
+  @@map("branches")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  tenantId     Int      @map("tenant_id")
+  branchId     Int?     @map("branch_id")
+  fullName     String   @map("full_name") @db.VarChar(150)
+  email        String   @unique @db.VarChar(150)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         UserRole
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  validatedResults TestResult[]
+
+  @@map("users")
+}
+
+model Patient {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @map("tenant_id")
+  firstName String   @map("first_name") @db.VarChar(100)
+  lastName  String   @map("last_name") @db.VarChar(100)
+  birthDate DateTime @map("birth_date") @db.Date
+  gender    Gender
+  phone     String?  @db.VarChar(20)
+  email     String?  @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders    Order[]
+
+  @@map("patients")
+}
+
+model TestCatalog {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int      @map("tenant_id")
+  code           String   @db.VarChar(30)
+  name           String   @db.VarChar(150)
+  price          Decimal  @db.Decimal(10, 2)
+  sampleType     String   @map("sample_type") @db.VarChar(50)
+  referenceRange String?  @map("reference_range") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  tenant         Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderItems     OrderItem[]
+
+  @@unique([tenantId, code], name: "uq_tenant_test_code")
+  @@map("test_catalog")
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  tenantId    Int         @map("tenant_id")
+  branchId    Int         @map("branch_id")
+  patientId   Int         @map("patient_id")
+  totalAmount Decimal     @map("total_amount") @db.Decimal(10, 2)
+  paidAmount  Decimal     @default(0.00) @map("paid_amount") @db.Decimal(10, 2)
+  status      OrderStatus @default(pending)
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch      @relation(fields: [branchId], references: [id])
+  patient     Patient     @relation(fields: [patientId], references: [id])
+  items       OrderItem[]
+  samples     Sample[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id      Int     @id @default(autoincrement())
+  orderId Int     @map("order_id")
+  testId  Int     @map("test_id")
+  price   Decimal @db.Decimal(10, 2)
+
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  test        TestCatalog  @relation(fields: [testId], references: [id])
+  testResults TestResult[]
+
+  @@map("order_items")
+}
+
+model Sample {
+  id          Int          @id @default(autoincrement())
+  tenantId    Int          @map("tenant_id")
+  orderId     Int          @map("order_id")
+  barcode     String       @unique @db.VarChar(100)
+  status      SampleStatus @default(collected)
+  collectedAt DateTime?    @map("collected_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("samples")
+}
+
+model TestResult {
+  id          Int          @id @default(autoincrement())
+  tenantId    Int          @map("tenant_id")
+  orderItemId Int          @map("order_item_id")
+  resultValue String?      @map("result_value") @db.VarChar(255)
+  isAlert     Boolean      @default(false) @map("is_alert")
+  status      ResultStatus @default(captured)
+  validatedBy Int?         @map("validated_by")
+  validatedAt DateTime?    @map("validated_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderItem   OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  validator   User?        @relation(fields: [validatedBy], references: [id], onDelete: SetNull)
+
+  @@map("test_results")
+}

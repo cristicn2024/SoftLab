@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { prisma } from './config/db';
 import templateRoutes from './routes/template.routes';
+import orderCaptureRoutes from './routes/orderCapture.routes';
 
 dotenv.config();
 
@@ -27,6 +28,8 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api', templateRoutes);
+
+app.use('/api', orderCaptureRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor de Softlab corriendo en http://localhost:${PORT}`);

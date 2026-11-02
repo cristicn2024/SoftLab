@@ -51,19 +51,23 @@ enum ResultStatus {
 }
 
 model Tenant {
-  id          Int          @id @default(autoincrement())
-  name        String       @db.VarChar(150)
-  subdomain   String       @unique @db.VarChar(50)
-  status      TenantStatus @default(active)
-  createdAt   DateTime     @default(now()) @map("created_at")
+  id              Int              @id @default(autoincrement())
+  name            String           @db.VarChar(150)
+  subdomain       String           @unique @db.VarChar(50)
+  status          TenantStatus     @default(active)
+  createdAt       DateTime         @default(now()) @map("created_at")
 
-  branches    Branch[]
-  users       User[]
-  patients    Patient[]
-  tests       TestCatalog[]
-  orders      Order[]
-  samples     Sample[]
-  testResults TestResult[]
+  branches        Branch[]
+  users           User[]
+  patients        Patient[]
+  tests           TestCatalog[]
+  orders          Order[]
+  samples         Sample[]
+  testResults     TestResult[]
+  reportTemplates ReportTemplate[]
+  orderReports    OrderReport[]
+  doctors         Doctor[]
+  profileCatalogs ProfileCatalog[]
 
   @@map("tenants")
 }
@@ -130,6 +134,7 @@ model TestCatalog {
 
   tenant         Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orderItems     OrderItem[]
+  profileTests ProfileTest[]
 
   @@unique([tenantId, code], name: "uq_tenant_test_code")
   @@map("test_catalog")
@@ -140,30 +145,33 @@ model Order {
   tenantId    Int         @map("tenant_id")
   branchId    Int         @map("branch_id")
   patientId   Int         @map("patient_id")
+  doctorId    Int?        @map("doctor_id")
   totalAmount Decimal     @map("total_amount") @db.Decimal(10, 2)
   paidAmount  Decimal     @default(0.00) @map("paid_amount") @db.Decimal(10, 2)
   status      OrderStatus @default(pending)
   createdAt   DateTime    @default(now()) @map("created_at")
 
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch      Branch      @relation(fields: [branchId], references: [id])
-  patient     Patient     @relation(fields: [patientId], references: [id])
-  items       OrderItem[]
-  samples     Sample[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch        @relation(fields: [branchId], references: [id])
+  patient      Patient       @relation(fields: [patientId], references: [id])
+  doctor       Doctor?       @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  items        OrderItem[]
+  samples      Sample[]
   orderReports OrderReport[]
-
 
   @@map("orders")
 }
 
 model OrderItem {
-  id      Int     @id @default(autoincrement())
-  orderId Int     @map("order_id")
-  testId  Int     @map("test_id")
-  price   Decimal @db.Decimal(10, 2)
+  id        Int      @id @default(autoincrement())
+  orderId   Int      @map("order_id")
+  testId    Int?     @map("test_id")
+  profileId Int?     @map("profile_id")
+  price     Decimal  @db.Decimal(10, 2)
 
-  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  test        TestCatalog  @relation(fields: [testId], references: [id])
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  test        TestCatalog?    @relation(fields: [testId], references: [id], onDelete: SetNull)
+  profile     ProfileCatalog? @relation(fields: [profileId], references: [id], onDelete: SetNull)
   testResults TestResult[]
 
   @@map("order_items")
@@ -247,4 +255,48 @@ model OrderReport {
   template   ReportTemplate @relation(fields: [templateId], references: [id])
 
   @@map("order_reports")
+}
+
+model Doctor {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @map("tenant_id")
+  name      String   @db.VarChar(150)
+  cedula    String?  @db.VarChar(50)
+  specialty String?  @db.VarChar(100)
+  phone     String?  @db.VarChar(20)
+  email     String?  @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@map("doctors")
+}
+
+model ProfileCatalog {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int      @map("tenant_id")
+  code        String   @db.VarChar(30)
+  name        String   @db.VarChar(150)
+  description String?  @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  status      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tests  ProfileTest[]
+  items  OrderItem[]
+
+  @@map("profile_catalogs")
+}
+
+model ProfileTest {
+  profileId Int @map("profile_id")
+  testId    Int @map("test_id")
+
+  profile ProfileCatalog @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  test    TestCatalog    @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, testId])
+  @@map("profile_tests")
 }

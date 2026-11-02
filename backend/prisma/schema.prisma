@@ -217,7 +217,7 @@ model TestResult {
   validatedBy Int?         @map("validated_by")
   validatedAt DateTime?    @map("validated_at")
   createdAt   DateTime     @default(now()) @map("created_at")
-  flag        String?      @db.VarChar(2)
+  flag        String?      @db.VarChar(10)
   parameterId Int?         @map("parameter_id")
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)

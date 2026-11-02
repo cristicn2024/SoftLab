@@ -292,25 +292,25 @@ export const ReportTemplatePage: React.FC = () => {
                 </thead>
                 <tbody>
                   <tr>
-                    <td style={styles.tableBodyCell}>Hemoglobina</td>
-                    <td style={styles.tableBodyCell}><strong>9.8</strong></td>
-                    <td style={styles.tableBodyCell}>g/dL</td>
-                    <td style={styles.tableBodyCell}>12.0 a 16.0</td>
-                    <td style={styles.tableBodyCell}>L</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>Hemoglobina</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}><strong>9.8</strong></td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>g/dL</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>12.0 a 16.0</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>L</td>
                   </tr>
                   <tr>
-                    <td style={styles.tableBodyCell}>Hematocrito</td>
-                    <td style={styles.tableBodyCell}><strong>31</strong></td>
-                    <td style={styles.tableBodyCell}>%</td>
-                    <td style={styles.tableBodyCell}>36 a 46</td>
-                    <td style={styles.tableBodyCell}>L</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>Hematocrito</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}><strong>31</strong></td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>%</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>36 a 46</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>L</td>
                   </tr>
                   <tr>
-                    <td style={styles.tableBodyCell}>Leucocitos</td>
-                    <td style={styles.tableBodyCell}><strong>12.8</strong></td>
-                    <td style={styles.tableBodyCell}>10³/µL</td>
-                    <td style={styles.tableBodyCell}>4.5 a 11.0</td>
-                    <td style={styles.tableBodyCell}>H</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>Leucocitos</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}><strong>12.8</strong></td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>10³/µL</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>4.5 a 11.0</td>
+                    <td style={{ ...styles.tableBodyCell, textAlign: 'left' }}>H</td>
                   </tr>
                 </tbody>
               </table>
@@ -359,9 +359,9 @@ export const ReportTemplatePage: React.FC = () => {
                 {versions.length > 0 ? (
                   versions.map((v) => (
                     <tr key={v.id}>
-                      <td style={styles.versionBodyCell}>v{v.version}</td>
-                      <td style={styles.versionBodyCell}>{v.isDefault ? 'Publicada' : 'Reemplazada'}</td>
-                      <td style={styles.versionBodyCell}>{new Date(v.createdAt).toLocaleDateString('es-MX')}</td>
+                      <td style={{ ...styles.versionBodyCell, textAlign: 'left' }}>v{v.version}</td>
+                      <td style={{ ...styles.versionBodyCell, textAlign: 'left' }}>{v.isDefault ? 'Publicada' : 'Reemplazada'}</td>
+                      <td style={{ ...styles.versionBodyCell, textAlign: 'left' }}>{new Date(v.createdAt).toLocaleDateString('es-MX')}</td>
                     </tr>
                   ))
                 ) : (
@@ -463,17 +463,17 @@ const styles: { [key: string]: React.CSSProperties } = {
   patientGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', fontSize: '12px', marginBottom: '20px', color: '#262626', lineHeight: '1.5' },
   areaHeading: { fontWeight: 'bold', fontSize: '13px', marginBottom: '10px' },
   previewTable: { width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '16px', fontFamily: 'monospace', border: '1px solid #171717' },
-  tableHeaderCell: { border: '1px solid #171717', padding: '8px 10px', backgroundColor: '#f5f5f5', fontWeight: 'bold' },
-  tableBodyCell: { border: '1px solid #171717', padding: '8px 10px' },
+  tableHeaderCell: { borderBottom: '1px solid #171717', padding: '8px 10px', backgroundColor: 'transparent', fontWeight: 'bold' },
+  tableBodyCell: { borderBottom: '1px solid #171717', padding: '8px 10px' },
   previewNotes: { fontSize: '11px', color: '#404040', lineHeight: '1.4', marginBottom: '24px' },
   previewFooter: { display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' },
   signatureArea: { fontSize: '12px' },
   signatureLine: { width: '180px', borderTop: '1px solid #171717', marginBottom: '4px' },
   qrArea: { display: 'flex', alignItems: 'center', gap: '12px' },
   qrBox: { width: '44px', height: '44px' },
-  versionTable: { width: '100%', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'monospace', border: '1px solid #e5e5e5', borderRadius: '4px', backgroundColor: '#ffffff' },
-  versionHeaderCell: { borderBottom: '1px solid #e5e5e5', backgroundColor: '#fafafa', padding: '10px 14px', fontWeight: 'bold', color: '#404040' },
-  versionBodyCell: { borderBottom: '1px solid #f0f0f0', padding: '10px 14px', color: '#171717' },
+  versionTable: { width: '100%', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'monospace', border: '1px solid', borderRadius: '4px' },
+  versionHeaderCell: { borderBottom: '1px solid ', padding: '10px 14px', fontWeight: 'bold', color: '#404040' },
+  versionBodyCell: { borderBottom: '1px solid ', padding: '10px 14px', color: '#171717' },
   actionRow: { display: 'flex', justifyContent: 'flex-end', marginTop: '20px' },
   publishBtn: { backgroundColor: '#1b3b2b', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '4px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' },
   shortcutBadge: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '2px 6px', borderRadius: '3px', fontSize: '11px' },

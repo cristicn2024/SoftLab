@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 
 interface VersionItem {
@@ -20,6 +21,7 @@ interface NotificationState {
 }
 
 export const ReportTemplatePage: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -137,7 +139,16 @@ export const ReportTemplatePage: React.FC = () => {
         <aside style={styles.sidebar}>
           <div style={styles.brandTitle}>SoftLab</div>
           <nav style={styles.navMenu}>
-            <div style={styles.navItem}>Recepción <span style={styles.arrow}>›</span></div>
+            <div style={styles.navGroup}>
+              <div style={styles.navItem}>
+                Recepción <span style={styles.arrow}>˅</span>
+              </div>
+              <div style={styles.submenu}>
+                <div style={styles.subItem} onClick={() => navigate('/corte-caja')}>
+                  Corte de caja
+                </div>
+              </div>
+            </div>
             <div style={styles.navItem}>Catálogo <span style={styles.arrow}>›</span></div>
             <div style={styles.navItem}>Toma de muestras <span style={styles.arrow}>›</span></div>
             <div style={styles.navGroup}>

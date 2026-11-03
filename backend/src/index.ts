@@ -1,8 +1,10 @@
+import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { prisma } from './config/db';
 import templateRoutes from './routes/template.routes';
+import cashCutRoutes from './routes/cashCut.routes';
 
 dotenv.config();
 
@@ -27,6 +29,11 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api', templateRoutes);
+app.use('/api', cashCutRoutes);
+
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Ruta no encontrada' });
+});
 
 app.listen(PORT, () => {
   console.log(`Servidor de Softlab corriendo en http://localhost:${PORT}`);

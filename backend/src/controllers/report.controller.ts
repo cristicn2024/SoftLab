@@ -13,9 +13,11 @@ export async function getOrderPdf(req: Request, res: Response) {
       where: { id: orderId, tenantId },
       include: {
         patient: true,
+        doctor: true,
         items: {
           include: {
             test: true,
+            profile: true,
             testResults: true
           }
         },
@@ -27,13 +29,19 @@ export async function getOrderPdf(req: Request, res: Response) {
       return res.status(404).json({ error: 'Orden no encontrada' });
     }
 
-    // Buscar la plantilla vigente
-    const template = await prisma.reportTemplate.findFirst({
-      where: { tenantId, isDefault: true }
-    }) || {
-      primaryColor: '#0f766e',
-      chemistName: 'Q.F.B. Juan Pérez',
-      chemistCedula: '12345678'
+    // Buscar la plantilla vigente (o usar valores por defecto)
+    const storedTemplate = await prisma.reportTemplate.findFirst({
+      where: { tenantId, isDefault: true },
+      orderBy: { version: 'desc' }
+    });
+
+    const template = {
+      id: storedTemplate?.id ?? 1,
+      primaryColor: storedTemplate?.primaryColor ?? '#0f766e',
+      logoUrl: storedTemplate?.logoUrl ?? null,
+      signatureUrl: storedTemplate?.signatureUrl ?? null,
+      chemistName: storedTemplate?.chemistName ?? 'Q.F.B. Juan Pérez',
+      chemistCedula: storedTemplate?.chemistCedula ?? '12345678'
     };
 
     // Generar o recuperar token QR
@@ -44,7 +52,7 @@ export async function getOrderPdf(req: Request, res: Response) {
         data: {
           tenantId,
           orderId,
-          templateId: template.id || 1,
+          templateId: template.id,
           qrToken
         }
       });
@@ -55,7 +63,7 @@ export async function getOrderPdf(req: Request, res: Response) {
       tenantName: order.tenant.name,
       subdomain: order.tenant.subdomain,
       orderId: order.id,
-      folio: `ORD-${order.id.toString().padStart(6, '0')}`,
+      folio: order.folio ?? `ORD-${order.id.toString().padStart(6, '0')}`,
       createdAt: order.createdAt,
       patient: {
         fullName: `${order.patient.firstName} ${order.patient.lastName}`,
@@ -63,7 +71,7 @@ export async function getOrderPdf(req: Request, res: Response) {
         gender: order.patient.gender,
         patientId: order.patient.id
       },
-      doctorName: 'Dr. Medico Tratante',
+      doctorName: order.doctor ? `Dr. ${order.doctor.name}` : 'Particular',
       template: {
         primaryColor: template.primaryColor,
         logoUrl: template.logoUrl || undefined,
@@ -77,11 +85,12 @@ export async function getOrderPdf(req: Request, res: Response) {
           items: order.items.map(item => {
             const resVal = item.testResults[0]?.resultValue || 'N/A';
             return {
-              testName: item.test.name,
+              testName:
+                item.test?.name ?? item.profile?.name ?? 'Concepto sin nombre',
               resultValue: resVal,
-              units: 'mg/dL',
-              referenceRange: item.test.referenceRange || 'Normal',
-              flag: item.testResults[0]?.isAlert ? 'HIGH' : 'NORMAL'
+              units: item.test ? 'mg/dL' : '—',
+              referenceRange: item.test?.referenceRange || '—',
+              flag: item.testResults[0]?.isAlert ? ('HIGH' as const) : ('NORMAL' as const)
             };
           })
         }
@@ -101,7 +110,12 @@ export async function getOrderPdf(req: Request, res: Response) {
 
 // 2. Public QR Verification Endpoint
 export async function verifyReport(req: Request, res: Response) {
-  const { token } = req.params;
+  const token = String(req.params.token || '');
+
+  if (!token) {
+    return res.status(400).json({ valid: false, message: 'Token requerido' });
+  }
+
   const report = await prisma.orderReport.findUnique({
     where: { qrToken: token },
     include: { order: { include: { patient: true } }, tenant: true }

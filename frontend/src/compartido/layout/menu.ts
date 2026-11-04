@@ -11,7 +11,12 @@ export type ElementoMenu = {
 }
 
 export const MENU: ElementoMenu[] = [
-  { etiqueta: 'Recepción', prefijo: '/ordenes', subelementos: [] },
+  {
+    etiqueta: 'Recepción',
+    prefijo: '/ordenes',
+    ruta: '/ordenes/cobro',
+    subelementos: [{ etiqueta: 'Cobro de la orden', ruta: '/ordenes/cobro' }],
+  },
   { etiqueta: 'Catálogo', prefijo: '/catalogo', subelementos: [] },
   { etiqueta: 'Toma de muestras', prefijo: '/toma-de-muestras', subelementos: [] },
   {

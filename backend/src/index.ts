@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { prisma } from './config/db';
 import templateRoutes from './routes/template.routes';
+import paymentRoutes from './routes/payment.routes';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api', templateRoutes);
+app.use('/api', paymentRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor de Softlab corriendo en http://localhost:${PORT}`);

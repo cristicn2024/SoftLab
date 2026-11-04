@@ -6,6 +6,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "seed:hu-5-2-6-2": "tsx prisma/seeds/hu-5-2-6-2.ts",
+    "seed:hu-6-1": "tsx prisma/seeds/hu-6-1.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "start": "node dist/index.js"
   },
   "keywords": [],

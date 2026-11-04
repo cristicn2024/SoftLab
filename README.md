@@ -20,6 +20,14 @@ SoftLab reúne los flujos de recepción y captura de resultados en una interfaz 
 - Cálculo de LDL y VLDL cuando hay datos suficientes.
 - Registro de resultados y notificación de valores críticos.
 
+### HU 6.1 · Captura ágil en listas de trabajo
+
+- Lista de trabajo con pacientes y estudios pendientes (`/resultados/lista-de-trabajo`).
+- Captura rápida: Enter avanza al siguiente parámetro y Ctrl + Enter guarda y abre la siguiente orden.
+- El rango de referencia se elige con el sexo y la edad del paciente; si no hay rango, se avisa y se captura sin interpretación automática.
+- API en `/api/worklist` (requiere el encabezado `x-tenant-id`). Datos de prueba: `npm run seed:hu-5-2-6-2` y luego `npm run seed:hu-6-1`.
+- Pruebas: `npm test` en `backend` y en `frontend`.
+
 ## Cómo correr el proyecto (sin Docker)
 
 1. En MySQLWorkbench: abre backend/src/database/schema.sql y ejecútalo (rayo). Recrea softlab_db con las tablas base.

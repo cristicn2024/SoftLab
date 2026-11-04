@@ -102,34 +102,58 @@ export const OrderCapturePage: React.FC = () => {
   };
 
   // 4. Agregar concepto a la orden con validación de sexo y duplicados
-  const addConcept = (concept: Concept) => {
-    const newWarnings: string[] = [];
+  
+const addConcept = (concept: Concept) => {
+  const newWarnings: string[] = [];
 
-    // Validar restricción por sexo
-    if (concept.genderRestriction !== 'BOTH' && concept.genderRestriction !== patient.genderKey) {
-      newWarnings.push(`El estudio "${concept.name}" no corresponde al sexo registrado (${patient.gender}).`);
-    }
+  // 1. Validar duplicado exacto
+  const isDuplicate = orderItems.some(
+    (i) => i.id === concept.id && i.type === concept.type
+  );
 
-    // Validar duplicado exacto
-    const isDuplicate = orderItems.some((i) => i.id === concept.id && i.type === concept.type);
-    if (isDuplicate) {
-      newWarnings.push(`El concepto "${concept.name}" ya fue agregado a la orden.`);
-    }
+  if (isDuplicate) {
+    setWarnings([
+      `El concepto "${concept.name}" ya fue agregado a la orden.`
+    ]);
+    return;
+  }
 
-    // Validar si el estudio ya está dentro de un perfil previamente agregado
-    const alreadyInProfile = orderItems.some((i) =>
-      i.type === 'PROFILE' && i.includedTestIds.some((tid) => concept.includedTestIds.includes(tid))
+  // 2. Validar restricción por sexo
+  if (
+    concept.genderRestriction !== 'BOTH' &&
+    concept.genderRestriction !== patient.genderKey
+  ) {
+    newWarnings.push(
+      `El estudio "${concept.name}" no corresponde al sexo registrado (${patient.gender}).`
     );
-    if (alreadyInProfile) {
-      newWarnings.push(`El estudio "${concept.name}" ya está incluido en un perfil de esta orden.`);
-    }
+  }
 
-    setWarnings(newWarnings);
-    setOrderItems([...orderItems, concept]);
-    setQuery('');
-    setSuggestions([]);
-    searchInputRef.current?.focus();
-  };
+  // 3. Validar si el estudio ya está incluido en un perfil
+  const alreadyInProfile = orderItems.some((i) =>
+    i.type === 'PROFILE' &&
+    i.includedTestIds.some((tid) =>
+      concept.includedTestIds.includes(tid)
+    )
+  );
+
+  if (alreadyInProfile) {
+    newWarnings.push(
+      `El estudio "${concept.name}" ya está incluido en un perfil de esta orden.`
+    );
+  }
+
+  // 4. Actualizar advertencias y orden
+  setWarnings(newWarnings);
+  setOrderItems([...orderItems, concept]);
+
+  // 5. Limpiar búsqueda
+  setQuery('');
+  setSuggestions([]);
+
+  // 6. Regresar el foco al buscador
+  searchInputRef.current?.focus();
+};
+
 
   const removeConcept = (index: number) => {
     setOrderItems(orderItems.filter((_, i) => i !== index));

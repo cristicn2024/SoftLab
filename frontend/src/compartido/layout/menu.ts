@@ -15,6 +15,7 @@ export const MENU: ElementoMenu[] = [
     subelementos: [
       { etiqueta: 'Pacientes' },
       { etiqueta: 'Nueva orden', ruta: '/recepcion/nueva-orden' },
+      { etiqueta: 'Cobro de la orden', ruta: '/ordenes/cobro' },
       { etiqueta: 'Corte de caja' }
     ]
   },

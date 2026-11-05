@@ -45,6 +45,12 @@ enum SampleStatus {
   processed
 }
 
+enum PaymentMethod {
+  cash
+  card
+  transfer
+}
+
 enum ResultStatus {
   captured
   validated
@@ -64,6 +70,8 @@ model Tenant {
   orders          Order[]
   samples         Sample[]
   testResults     TestResult[]
+  payments        Payment[]
+  paymentLogs     PaymentLog[]
   reportTemplates ReportTemplate[]
   orderReports    OrderReport[]
   doctors         Doctor[]
@@ -84,6 +92,7 @@ model Branch {
   users     User[]
   orders    Order[]
   reportTemplates ReportTemplate[]
+  payments  Payment[]
 
   @@map("branches")
 }
@@ -151,6 +160,17 @@ model Order {
   status      OrderStatus @default(pending)
   createdAt   DateTime    @default(now()) @map("created_at")
 
+  // HU 5.3 · Total y estado de pago
+  doctorName           String?   @map("doctor_name") @db.VarChar(150)
+  discountPercent      Int       @default(0) @map("discount_percent")
+  discountReason       String?   @map("discount_reason") @db.VarChar(255)
+  discountAuthorizedBy String?   @map("discount_authorized_by") @db.VarChar(150)
+  invoiceRfc           String?   @map("invoice_rfc") @db.VarChar(13)
+  invoiceName          String?   @map("invoice_name") @db.VarChar(255)
+  invoiceZip           String?   @map("invoice_zip") @db.VarChar(5)
+  invoiceUse           String?   @map("invoice_use") @db.VarChar(100)
+  resultsDeliveredAt   DateTime? @map("results_delivered_at")
+
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch       Branch        @relation(fields: [branchId], references: [id])
   patient      Patient       @relation(fields: [patientId], references: [id])
@@ -158,6 +178,8 @@ model Order {
   items        OrderItem[]
   samples      Sample[]
   orderReports OrderReport[]
+  payments    Payment[]
+  paymentLogs PaymentLog[]
 
   @@map("orders")
 }
@@ -299,4 +321,44 @@ model ProfileTest {
 
   @@id([profileId, testId])
   @@map("profile_tests")
+}
+
+// HU 5.3 · Pagos de una orden. Se registran en la caja de la sucursal donde se cobra.
+// Un pago no se borra: se marca como cancelado con motivo y usuario.
+model Payment {
+  id           Int           @id @default(autoincrement())
+  tenantId     Int           @map("tenant_id")
+  orderId      Int           @map("order_id")
+  branchId     Int           @map("branch_id")
+  method       PaymentMethod
+  amount       Decimal       @db.Decimal(10, 2)
+  reference    String?       @db.VarChar(100)
+  createdBy    String        @map("created_by") @db.VarChar(150)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  cancelled    Boolean       @default(false)
+  cancelReason String?       @map("cancel_reason") @db.VarChar(255)
+  cancelledBy  String?       @map("cancelled_by") @db.VarChar(150)
+  cancelledAt  DateTime?     @map("cancelled_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  branch       Branch        @relation(fields: [branchId], references: [id])
+
+  @@map("payments")
+}
+
+// HU 5.3 · Bitácora del cobro: pagos, descuentos, cancelaciones y datos de factura.
+model PaymentLog {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @map("tenant_id")
+  orderId   Int      @map("order_id")
+  userName  String   @map("user_name") @db.VarChar(150)
+  action    String   @db.VarChar(100)
+  detail    String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payment_logs")
 }

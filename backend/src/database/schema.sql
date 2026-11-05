@@ -1,6 +1,7 @@
 -- Creación de la base de datos
 CREATE DATABASE IF NOT EXISTS softlab_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE softlab_db;
+SET NAMES utf8mb4;
 
 -- 1. TENANTS (Laboratorios clientes del SaaS)
 CREATE TABLE tenants (
@@ -74,6 +75,16 @@ CREATE TABLE orders (
     paid_amount DECIMAL(10, 2) DEFAULT 0.00,
     status ENUM('pending', 'in_process', 'completed', 'cancelled') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- HU 5.3 · Total y estado de pago
+    doctor_name VARCHAR(150) NULL,
+    discount_percent INT NOT NULL DEFAULT 0,
+    discount_reason VARCHAR(255) NULL,
+    discount_authorized_by VARCHAR(150) NULL,
+    invoice_rfc VARCHAR(13) NULL,
+    invoice_name VARCHAR(255) NULL,
+    invoice_zip VARCHAR(5) NULL,
+    invoice_use VARCHAR(100) NULL,
+    results_delivered_at DATETIME(3) NULL,
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (branch_id) REFERENCES branches(id),
     FOREIGN KEY (patient_id) REFERENCES patients(id)
@@ -87,6 +98,38 @@ CREATE TABLE order_items (
     price DECIMAL(10, 2) NOT NULL,
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
     FOREIGN KEY (test_id) REFERENCES test_catalog(id)
+) ENGINE=InnoDB;
+
+-- 7.1 PAGOS Y BITÁCORA DE COBRO (HU 5.3)
+CREATE TABLE payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    order_id INT NOT NULL,
+    branch_id INT NOT NULL,                     -- caja de la sucursal donde se cobró
+    method ENUM('cash', 'card', 'transfer') NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    reference VARCHAR(100),                     -- autorización de tarjeta o referencia de transferencia
+    created_by VARCHAR(150) NOT NULL,
+    created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    cancelled BOOLEAN NOT NULL DEFAULT FALSE,   -- los pagos no se borran, se cancelan
+    cancel_reason VARCHAR(255),
+    cancelled_by VARCHAR(150),
+    cancelled_at DATETIME(3) NULL,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES branches(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE payment_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    order_id INT NOT NULL,
+    user_name VARCHAR(150) NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    detail TEXT NOT NULL,
+    created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- 8. RASTREO DE MUESTRAS (Código de barras por tubo)
@@ -125,3 +168,17 @@ INSERT INTO users (id, tenant_id, branch_id, full_name, email, password_hash, ro
 VALUES (1, 1, 1, 'Admin Demo', 'admin@central.com', '$2b$10$hashedpassword', 'admin');
 INSERT INTO test_catalog (tenant_id, code, name, price, sample_type, reference_range) 
 VALUES (1, 'BH', 'Biometría Hemática', 250.00, 'Sangre (Tubo Rojo)', 'Hemoglobina 12-16 g/dL');
+
+-- Orden de ejemplo para la HU 5.3 (cobro)
+INSERT IGNORE INTO patients (id, tenant_id, first_name, last_name, birth_date, gender, phone, email)
+VALUES (1, 1, 'María', 'López García', '1988-03-12', 'F', '6445550042', 'maria.lopez@correo.com');
+INSERT IGNORE INTO test_catalog (tenant_id, code, name, price, sample_type, reference_range) VALUES
+    (1, 'GLU001', 'Glucosa en ayuno', 120.00, 'Sangre (Tubo Amarillo)', '70-99 mg/dL'),
+    (1, 'PERF02', 'Perfil lipídico', 450.00, 'Sangre (Tubo Amarillo)', 'Colesterol total < 200 mg/dL'),
+    (1, 'EGO001', 'Examen general de orina', 90.00, 'Orina (Frasco estéril)', 'Nitritos: Negativo');
+INSERT IGNORE INTO orders (id, tenant_id, branch_id, patient_id, total_amount, doctor_name)
+VALUES (1, 1, 1, 1, 910.00, 'Dra. Patricia Ruiz · Medicina interna');
+INSERT INTO order_items (order_id, test_id, price)
+SELECT 1, t.id, t.price FROM test_catalog t
+WHERE t.tenant_id = 1 AND t.code IN ('BH', 'GLU001', 'PERF02', 'EGO001')
+  AND NOT EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = 1);

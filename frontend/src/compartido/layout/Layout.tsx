@@ -12,8 +12,8 @@ export function Layout() {
   const activo = elementoActivo(pathname)
 
   let modulo = ''
-  if (activo !== null) modulo = activo.etiqueta
-
+  if (activo !== undefined) modulo = activo.etiqueta
+  
   return (
     <div className="sl-shell">
       <BarraLateral />

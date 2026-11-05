@@ -13,16 +13,16 @@ export const MENU: ElementoMenu[] = [
   {
     etiqueta: 'Recepción',
     subelementos: [
-      { etiqueta: 'Pacientes', ruta: '/recepcion/pacientes' },
+      { etiqueta: 'Pacientes' },
       { etiqueta: 'Nueva orden', ruta: '/recepcion/nueva-orden' },
-      { etiqueta: 'Corte de caja', ruta: '/recepcion/corte-caja' }
+      { etiqueta: 'Corte de caja' }
     ]
   },
   {
     etiqueta: 'Catálogo',
     subelementos: [
-      { etiqueta: 'Estudios', ruta: '/catalogo/estudios' },
-      { etiqueta: 'Perfiles', ruta: '/catalogo/perfiles' }
+      { etiqueta: 'Estudios' },
+      { etiqueta: 'Perfiles' }
     ]
   },
   {
@@ -41,9 +41,7 @@ export const MENU: ElementoMenu[] = [
   },
   {
     etiqueta: 'Reportes',
-    subelementos: [
-      { etiqueta: 'Ejemplo', ruta: '/configuracion/plantilla-reporte' }
-    ]
+    subelementos: []
   }
 ]
 

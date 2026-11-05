@@ -4,22 +4,24 @@
     "moduleResolution": "nodenext",
     "resolvePackageJsonExports": true,
     "esModuleInterop": true,
-    "isolatedModules": true,               // cada archivo se compila solo; por eso a veces hace falta "import type"
+    "isolatedModules": true,
     "declaration": true,
-    "removeComments": true,                // esto borra comentarios del JS compilado, no de este archivo
-    "emitDecoratorMetadata": true,         // sin esto NO hay inyección de dependencias (el tema de hoy)
-    "experimentalDecorators": true,        // habilita @Controller, @Injectable, @Module, etc.
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2023",                    // a qué versión de JavaScript se traduce el código
+    "target": "ES2023",
     "sourceMap": true,
-    "outDir": "./dist",                    // aquí queda el JS compilado (lo que en verdad corre `node`)
-    "baseUrl": "./",
+    "outDir": "./dist",
+    "rootDir": "./src",
     "incremental": true,
     "skipLibCheck": true,
-    "strictNullChecks": true,              // NO existe "strict": true aquí. Nest activa este flag suelto...
+    "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
-    "noImplicitAny": false,                // ...y deja este apagado a propósito: más permisivo para empezar
+    "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "prisma", "test", "src/__tests__", "**/*.test.ts", "**/*spec.ts"]
 }

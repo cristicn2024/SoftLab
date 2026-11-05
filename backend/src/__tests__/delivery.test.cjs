@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 let ts;
-try { ts = require('typescript'); } catch { ts = require('../../../frontend/node_modules/typescript'); }
+try { ts = require('typescript'); } catch {} if (!ts?.transpileModule) ts = require('../../../frontend/node_modules/typescript');
 
 function setup(overrides = {}, role = '', reason, channel = 'counter') {
   const order = { id: 7, status: 'completed', discountPercent: 0, resultsDeliveredAt: null,

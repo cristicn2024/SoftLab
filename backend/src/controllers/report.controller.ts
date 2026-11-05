@@ -22,9 +22,11 @@ export async function getOrderPdf(req: Request, res: Response) {
         where: { id: orderId, tenantId },
         include: {
           patient: true,
+          doctor: true,
           items: {
             include: {
               test: true,
+              profile: true,
               testResults: true
             }
           },
@@ -38,7 +40,7 @@ export async function getOrderPdf(req: Request, res: Response) {
 
       // Buscar la plantilla vigente
       const template = await tx.reportTemplate.findFirst({
-        where: { tenantId, isDefault: true }
+        where: { tenantId, isDefault: true }, orderBy: { version: 'desc' }
       });
       if (!template) throw new Error('Configura una plantilla predeterminada para emitir informes');
 
@@ -61,7 +63,7 @@ export async function getOrderPdf(req: Request, res: Response) {
         tenantName: order.tenant.name,
         subdomain: order.tenant.subdomain,
         orderId: order.id,
-        folio: `ORD-${order.id.toString().padStart(6, '0')}`,
+        folio: order.folio ?? `ORD-${order.id.toString().padStart(6, '0')}`,
         createdAt: order.createdAt,
         patient: {
           fullName: `${order.patient.firstName} ${order.patient.lastName}`,
@@ -69,7 +71,7 @@ export async function getOrderPdf(req: Request, res: Response) {
           gender: order.patient.gender,
           patientId: order.patient.id
         },
-        doctorName: 'Dr. Medico Tratante',
+        doctorName: order.doctor ? `Dr. ${order.doctor.name}` : 'Particular',
         template: {
           primaryColor: template.primaryColor,
           logoUrl: template.logoUrl || undefined,
@@ -83,7 +85,7 @@ export async function getOrderPdf(req: Request, res: Response) {
             items: order.items.map(item => {
               const resVal = item.testResults[0]?.resultValue || 'N/A';
               return {
-                testName: item.test?.name || 'Perfil',
+                testName: item.test?.name ?? item.profile?.name ?? 'Concepto sin nombre',
                 resultValue: resVal,
                 units: 'mg/dL',
                 referenceRange: item.test?.referenceRange || 'Normal',
@@ -97,7 +99,7 @@ export async function getOrderPdf(req: Request, res: Response) {
 
       return reportBuffer;
     });
-    if ('error' in result) return res.status(result.status).json(result);
+    if ('error' in result) return res.status(result.status ?? 500).json(result);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=Informe_Orden_${orderId}.pdf`);
     return res.send(result.buffer);
@@ -109,7 +111,7 @@ export async function getOrderPdf(req: Request, res: Response) {
 
 // 2. Public QR Verification Endpoint
 export async function verifyReport(req: Request, res: Response) {
-  const { token } = req.params;
+  const token = String(req.params.token);
   const report = await prisma.orderReport.findUnique({
     where: { qrToken: token },
     include: { order: { include: { patient: true } }, tenant: true }

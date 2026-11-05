@@ -1,23 +1,25 @@
-import { SESION } from '../sesion'
+import { useSesion } from '../sesionContext'
 
 export function BarraSuperior() {
+  const { sesion } = useSesion()
+
   return (
-    <header className="sl-barra">
+    <header className="sl-barra no-print">
       <div>
         <small>LABORATORIO</small>
-        <b>{SESION.laboratorio}</b>
+        <b>{sesion.laboratorio}</b>
       </div>
       <div>
         <small>SUCURSAL</small>
-        <b>{SESION.sucursal}</b>
+        <b>{sesion.sucursal}</b>
       </div>
       <div className="sl-empujar">
         <small>USUARIO</small>
-        <b>{SESION.usuario}</b>
+        <b>{sesion.usuario}</b>
       </div>
       <div>
         <small>ROL</small>
-        <b>{SESION.rol}</b>
+        <b>{sesion.rol}</b>
       </div>
     </header>
   )

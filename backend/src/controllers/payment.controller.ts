@@ -73,7 +73,7 @@ async function buildBilling(tenantId: number, orderId: number) {
     include: {
       patient: true,
       branch: true,
-      items: { include: { test: true }, orderBy: { id: 'asc' } },
+      items: { include: { test: true, profile: true }, orderBy: { id: 'asc' } },
       payments: { orderBy: { id: 'asc' } },
       paymentLogs: { orderBy: { id: 'desc' } },
     },
@@ -96,6 +96,20 @@ async function buildBilling(tenantId: number, orderId: number) {
 
   const genders: Record<string, string> = { F: 'Mujer', M: 'Hombre', Other: 'Otro' };
 
+  const lineas: { code: string; name: string; price: string }[] = [];
+    for (const item of order.items) {
+    let code = '';
+    let name = '';
+    if (item.test) {
+      code = item.test.code;
+      name = item.test.name;
+    } else if (item.profile) {
+      code = item.profile.code;
+      name = item.profile.name;
+    }
+    lineas.push({ code, name, price: toPesos(toCents(item.price)) });
+  }
+
   return {
     id: order.id,
     folio: 'SL-' + String(order.id).padStart(6, '0'),
@@ -108,7 +122,7 @@ async function buildBilling(tenantId: number, orderId: number) {
     },
     doctorName: order.doctorName,
     branch: { id: order.branch.id, name: order.branch.name },
-    items: order.items.map((item) => ({ code: item.test?.code ?? 'PERFIL', name: item.test?.name ?? 'Perfil', price: toPesos(toCents(item.price)) })),
+    items: lineas,
     discount: { percent: order.discountPercent, reason: order.discountReason, authorizedBy: order.discountAuthorizedBy },
     invoice,
     subtotal: toPesos(subtotal),

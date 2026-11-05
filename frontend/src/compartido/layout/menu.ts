@@ -16,7 +16,7 @@ export const MENU: ElementoMenu[] = [
       { etiqueta: 'Pacientes' },
       { etiqueta: 'Nueva orden', ruta: '/recepcion/nueva-orden' },
       { etiqueta: 'Cobro de la orden', ruta: '/ordenes/cobro' },
-      { etiqueta: 'Corte de caja' }
+      { etiqueta: 'Corte de caja', ruta: '/ordenes/corte-caja' }
     ]
   },
   {
@@ -34,6 +34,10 @@ export const MENU: ElementoMenu[] = [
     etiqueta: 'Resultados',
     subelementos: [
       { etiqueta: 'Entrega de resultados', ruta: '/resultados/entrega' },
+      { etiqueta: 'Captura de resultados', ruta: '/resultados/lista-de-trabajo' },
+      { etiqueta: 'Por validar' },
+      { etiqueta: 'Envíos' },
+      { etiqueta: 'Rangos de referencia' },
       { etiqueta: 'Plantilla de informes', ruta: '/resultados/plantillas' }
     ]
   },

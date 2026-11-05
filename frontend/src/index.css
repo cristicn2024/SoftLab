@@ -94,3 +94,38 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+:root {
+  --green: #20563f;
+  --muted: #68716f;
+  --amber: #c67a08;
+  --red: #c62820;
+  --paper: #fbfaf6;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 360px;
+  min-height: 100vh;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.mono,
+kbd,
+.flag {
+  font-family: Consolas, 'Courier New', monospace;
+}

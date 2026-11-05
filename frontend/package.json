@@ -6,6 +6,7 @@
     "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test": "node --experimental-strip-types --test src/features/orders/indications.test.ts src/features/results/interpretation.test.ts src/features/lista-de-trabajo/captura.test.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run"

@@ -7,6 +7,9 @@ import templateRoutes from './routes/template.routes';
 import orderCaptureRoutes from './routes/orderCapture.routes';
 import paymentRoutes from './routes/payment.routes';
 import cashCutRoutes from './routes/cashCut.routes';
+import featureRoutes from './routes/feature.routes';
+import { buildWorklistRouter } from './modules/worklist/worklist.module';
+import { errorHandler } from './middleware/error-handler';
 
 dotenv.config();
 
@@ -33,10 +36,14 @@ app.use('/api', templateRoutes);
 app.use('/api', paymentRoutes);
 app.use('/api', cashCutRoutes);
 app.use('/api', orderCaptureRoutes);
+app.use('/api', featureRoutes);
+app.use('/api/worklist', buildWorklistRouter());
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada' });
 });
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Servidor de Softlab corriendo en http://localhost:${PORT}`);

@@ -6,8 +6,11 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "jest",
-    "db:seed:cashcut": "tsx prisma/seed-cashcut.ts"
+    "test": "tsx --test \"src/modules/**/*.test.ts\"",
+    "test:jest": "jest",
+    "db:seed:cashcut": "tsx prisma/seed-cashcut.ts",
+    "seed:hu-5-2-6-2": "tsx prisma/seeds/hu-5-2-6-2.ts",
+    "seed:hu-6-1": "tsx prisma/seeds/hu-6-1.ts"
   },
   "keywords": [],
   "author": "",

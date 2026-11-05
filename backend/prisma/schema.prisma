@@ -83,6 +83,13 @@ model Tenant {
   cashCuts        CashCut[]
   payments        Payment[]
   paymentLogs     PaymentLog[]
+  practitioners   Practitioner[]
+  parameters      TestParameter[]
+  referenceRanges ReferenceRange[]
+  instructionConfirmations InstructionConfirmation[]
+  instructionDeliveries    InstructionDelivery[]
+  criticalNotifications    CriticalNotification[]
+  instructions    StudyInstruction[]
 
   @@map("tenants")
 }
@@ -123,6 +130,9 @@ model User {
   cashierCuts     CashCut[]    @relation("CashCutCashier")
   closedCuts      CashCut[]    @relation("CashCutClosedBy")
   payments        Payment[]    @relation("PaymentCashier")
+  instructionConfirmations InstructionConfirmation[]
+  instructionDeliveries    InstructionDelivery[]
+  criticalNotifications    CriticalNotification[]
 
   @@index([branchId], map: "users_branch_id_fkey")
   @@index([tenantId], map: "users_tenant_id_fkey")
@@ -136,6 +146,7 @@ model Patient {
   lastName  String   @map("last_name") @db.VarChar(100)
   birthDate DateTime @map("birth_date") @db.Date
   gender    Gender
+  patientCode String? @map("patient_code") @db.VarChar(30)
   phone     String?  @db.VarChar(20)
   email     String?  @db.VarChar(150)
   createdAt DateTime @default(now()) @map("created_at")
@@ -143,6 +154,7 @@ model Patient {
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orders Order[]
 
+  @@unique([tenantId, patientCode])
   @@index([tenantId], map: "patients_tenant_id_fkey")
   @@map("patients")
 }
@@ -173,11 +185,16 @@ model TestCatalog {
   sampleType        String   @map("sample_type") @db.VarChar(50)
   genderRestriction String   @default("BOTH") @map("gender_restriction") @db.VarChar(10)
   referenceRange    String?  @map("reference_range") @db.Text
+  externalLab       String?  @map("external_lab") @db.VarChar(150)
+  turnaroundHours   Int?     @map("turnaround_hours")
   createdAt         DateTime @default(now()) @map("created_at")
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orderItems   OrderItem[]
   profileTests ProfileTest[]
+  instructions StudyInstruction[]
+  parameters   TestParameter[]
+  ranges       ReferenceRange[]
 
   @@unique([tenantId, code], name: "uq_tenant_test_code")
   @@map("test_catalog")
@@ -224,7 +241,8 @@ model Order {
   paidAmount     Decimal     @default(0.00) @map("paid_amount") @db.Decimal(10, 2)
   discountAmount Decimal     @default(0.00) @map("discount_amount") @db.Decimal(10, 2)
   status         OrderStatus @default(pending)
-  folio          String?     @unique @db.VarChar(30)
+  folio          String?     @unique @db.VarChar(40)
+  physicianId    Int?        @map("physician_id")
   createdAt      DateTime    @default(now()) @map("created_at")
 
   // HU 5.3 · Total y estado de pago
@@ -248,6 +266,9 @@ model Order {
   orderReports OrderReport[]
   payments     Payment[]
   paymentLogs  PaymentLog[]
+  physician    Practitioner? @relation(fields: [physicianId], references: [id], onDelete: SetNull)
+  instructionConfirmation InstructionConfirmation?
+  instructionDeliveries   InstructionDelivery[]
 
   @@index([branchId], map: "orders_branch_id_fkey")
   @@index([doctorId], map: "orders_doctor_id_fkey")
@@ -281,6 +302,10 @@ model Sample {
   barcode     String       @unique @db.VarChar(100)
   status      SampleStatus @default(collected)
   collectedAt DateTime?    @map("collected_at")
+  receivedAt  DateTime?    @map("received_at")
+  sampleDescription String? @map("sample_description") @db.VarChar(150)
+  equipment   String?      @db.VarChar(150)
+  capturedByName String?   @map("captured_by_name") @db.VarChar(150)
   createdAt   DateTime     @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -301,11 +326,16 @@ model TestResult {
   validatedBy Int?         @map("validated_by")
   validatedAt DateTime?    @map("validated_at")
   createdAt   DateTime     @default(now()) @map("created_at")
+  flag        String?      @db.VarChar(10)
+  parameterId Int?         @map("parameter_id")
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   validator User?     @relation(fields: [validatedBy], references: [id], onDelete: SetNull)
+  parameter TestParameter? @relation(fields: [parameterId], references: [id], onDelete: SetNull)
+  criticalNotifications CriticalNotification[]
 
+  @@unique([orderItemId, parameterId])
   @@index([orderItemId], map: "test_results_order_item_id_fkey")
   @@index([tenantId], map: "test_results_tenant_id_fkey")
   @@index([validatedBy], map: "test_results_validated_by_fkey")
@@ -448,4 +478,138 @@ model CashCut {
   @@index([cashierId])
   @@index([closedById])
   @@map("cash_cuts")
+}
+
+enum InstructionType {
+  fasting
+  first_urine
+  medication
+  text
+}
+
+enum DeliveryChannel {
+  whatsapp
+  email
+}
+
+enum CriticalRecipient {
+  doctor
+  patient
+}
+
+enum CriticalContactMethod {
+  phone
+  email
+  whatsapp
+  in_person
+}
+
+model Practitioner {
+  id Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+  fullName String @map("full_name") @db.VarChar(150)
+  specialty String? @db.VarChar(120)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders Order[]
+  @@unique([tenantId, fullName])
+  @@map("practitioners")
+}
+
+model StudyInstruction {
+  id Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+  testId Int @map("test_id")
+  type InstructionType
+  minHours Int? @map("min_hours")
+  maxHours Int? @map("max_hours")
+  text String @db.VarChar(500)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  test TestCatalog @relation(fields: [testId], references: [id], onDelete: Cascade)
+  @@unique([testId, type, text])
+  @@map("study_instructions")
+}
+
+model InstructionConfirmation {
+  id Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+  orderId Int @unique @map("order_id")
+  userId Int? @map("user_id")
+  branchId Int @map("branch_id")
+  observation String? @db.VarChar(500)
+  confirmedAt DateTime @default(now()) @map("confirmed_at")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@map("instruction_confirmations")
+}
+
+model InstructionDelivery {
+  id Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+  orderId Int @map("order_id")
+  userId Int? @map("user_id")
+  channel DeliveryChannel
+  createdAt DateTime @default(now()) @map("created_at")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@map("instruction_deliveries")
+}
+
+model TestParameter {
+  id Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+  testId Int @map("test_id")
+  name String @db.VarChar(150)
+  unit String? @db.VarChar(30)
+  sortOrder Int @default(0) @map("sort_order")
+  qualitativeExpected String? @map("qualitative_expected") @db.VarChar(100)
+  previousValue String? @map("previous_value") @db.VarChar(255)
+  previousDate String? @map("previous_date") @db.VarChar(40)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  test TestCatalog @relation(fields: [testId], references: [id], onDelete: Cascade)
+  ranges ReferenceRange[]
+  results TestResult[]
+  @@unique([testId, name])
+  @@map("test_parameters")
+}
+
+model ReferenceRange {
+  id Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+  testId Int @map("test_id")
+  parameterId Int? @map("parameter_id")
+  gender Gender?
+  minAgeYears Int? @map("min_age_years")
+  maxAgeYears Int? @map("max_age_years")
+  low Decimal? @db.Decimal(12, 4)
+  high Decimal? @db.Decimal(12, 4)
+  lowInclusive Boolean @default(true) @map("low_inclusive")
+  highInclusive Boolean @default(true) @map("high_inclusive")
+  criticalLow Decimal? @map("critical_low") @db.Decimal(12, 4)
+  criticalHigh Decimal? @map("critical_high") @db.Decimal(12, 4)
+  criticalLowInclusive Boolean @default(false) @map("critical_low_inclusive")
+  criticalHighInclusive Boolean @default(false) @map("critical_high_inclusive")
+  display String @db.VarChar(100)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  test TestCatalog @relation(fields: [testId], references: [id], onDelete: Cascade)
+  parameter TestParameter? @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+  @@map("reference_ranges")
+}
+
+model CriticalNotification {
+  id Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+  resultId Int @map("result_id")
+  userId Int? @map("user_id")
+  branchId Int @map("branch_id")
+  recipient CriticalRecipient
+  recipientName String @map("recipient_name") @db.VarChar(150)
+  contactMethod CriticalContactMethod @map("contact_method")
+  notifiedAt DateTime @map("notified_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  result TestResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@map("critical_notifications")
 }

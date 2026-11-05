@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { elementoActivo, MENU } from './menu'
 import type { ElementoMenu, SubElementoMenu } from './menu'
@@ -18,14 +18,25 @@ function SubElemento({ elemento, ruta }: { elemento: SubElementoMenu; ruta: stri
   )
 }
 
-function Modulo({ elemento, activo, ruta }: { elemento: ElementoMenu; activo: boolean; ruta: string }) {
+function Modulo({ elemento, esActivoRuta, ruta }: { elemento: ElementoMenu; esActivoRuta: boolean; ruta: string }) {
+  const [desplegado, setDesplegado] = useState(esActivoRuta)
+
+  // Expandir automáticamente si la URL activa cambia a este módulo
+  useEffect(() => {
+    if (esActivoRuta) setDesplegado(true)
+  }, [esActivoRuta])
+
   let clase = 'sl-item'
-  if (activo) clase = 'sl-item activo'
+  if (esActivoRuta) clase = 'sl-item activo'
+
+  const toggleDesplegar = () => {
+    setDesplegado(!desplegado)
+  }
 
   let boton = (
-    <button type="button" className={clase} disabled>
+    <button type="button" className={clase} onClick={toggleDesplegar}>
       {elemento.etiqueta}
-      <span>›</span>
+      <span>{desplegado ? '˅' : '›'}</span>
     </button>
   )
 
@@ -39,9 +50,11 @@ function Modulo({ elemento, activo, ruta }: { elemento: ElementoMenu; activo: bo
   }
 
   const subelementos: ReactNode[] = []
-  if (activo) {
+  if (desplegado && elemento.subelementos) {
     for (const subelemento of elemento.subelementos) {
-      subelementos.push(<SubElemento key={subelemento.etiqueta} elemento={subelemento} ruta={ruta} />)
+      subelementos.push(
+        <SubElemento key={subelemento.etiqueta} elemento={subelemento} ruta={ruta} />
+      )
     }
   }
 
@@ -59,7 +72,14 @@ export function BarraLateral() {
 
   const modulos: ReactNode[] = []
   for (const elemento of MENU) {
-    modulos.push(<Modulo key={elemento.etiqueta} elemento={elemento} activo={activo === elemento} ruta={pathname} />)
+    modulos.push(
+      <Modulo
+        key={elemento.etiqueta}
+        elemento={elemento}
+        esActivoRuta={activo === elemento}
+        ruta={pathname}
+      />
+    )
   }
 
   return (

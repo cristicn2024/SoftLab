@@ -112,54 +112,10 @@ export const ReportTemplatePage: React.FC = () => {
 
   return (
     <div style={styles.appContainer}>
-      {/* 1. BARRA SUPERIOR */}
-      <header style={styles.topHeader}>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>LABORATORIO</span>
-          <span style={styles.infoValue}>Laboratorio Santa Lucía</span>
-        </div>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>SUCURSAL</span>
-          <span style={styles.infoValue}>Clínica Central</span>
-        </div>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>USUARIO</span>
-          <span style={styles.infoValue}>Laura Méndez</span>
-        </div>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>ROL</span>
-          <span style={styles.infoValue}>Administradora</span>
-        </div>
-      </header>
-
+      
       <div style={styles.mainLayout}>
-        {/* 2. SIDEBAR */}
-        <aside style={styles.sidebar}>
-          <div style={styles.brandTitle}>SoftLab</div>
-          <nav style={styles.navMenu}>
-            <div style={styles.navItem}>Recepción <span style={styles.arrow}>›</span></div>
-            <div style={styles.navItem}>Catálogo <span style={styles.arrow}>›</span></div>
-            <div style={styles.navItem}>Toma de muestras <span style={styles.arrow}>›</span></div>
-            <div style={styles.navGroup}>
-              <div style={{ ...styles.navItem, fontWeight: 'bold' }}>
-                Resultados <span style={styles.arrow}>˅</span>
-              </div>
-              <div style={styles.submenu}>
-                <div style={styles.subItem}>Captura de resultados</div>
-                <div style={styles.subItem}>Por validar</div>
-                <div style={styles.subItem}>Envíos</div>
-                <div style={styles.subItem}>Rangos de referencia</div>
-                <div style={{ ...styles.subItem, ...styles.activeSubItem }}>
-                  Plantillas de informe
-                </div>
-              </div>
-            </div>
-            <div style={styles.navItem}>Administración <span style={styles.arrow}>›</span></div>
-            <div style={styles.navItem}>Reportes <span style={styles.arrow}>›</span></div>
-          </nav>
-        </aside>
 
-        {/* 3. ÁREA DE CONTENIDO */}
+        {/* ÁREA DE CONTENIDO */}
         <main style={styles.contentArea}>
           {/* Miga de Pan */}
           <div style={{ ...styles.breadcrumb, textAlign: 'left' }}>
@@ -392,7 +348,7 @@ export const ReportTemplatePage: React.FC = () => {
 const styles: { [key: string]: React.CSSProperties } = {
   appContainer: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    backgroundColor: '#f3f2ee',
+    backgroundColor: '#f3f0e8',
     minHeight: '100vh',
     color: '#1a1a1a',
   },

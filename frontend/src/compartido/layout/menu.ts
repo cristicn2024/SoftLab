@@ -1,32 +1,54 @@
-export type SubElementoMenu = {
+export interface SubElementoMenu {
   etiqueta: string
   ruta?: string
 }
 
-export type ElementoMenu = {
+export interface ElementoMenu {
   etiqueta: string
-  prefijo: string
   ruta?: string
   subelementos: SubElementoMenu[]
 }
 
 export const MENU: ElementoMenu[] = [
-  { etiqueta: 'Recepción', prefijo: '/ordenes', subelementos: [] },
-  { etiqueta: 'Catálogo', prefijo: '/catalogo', subelementos: [] },
-  { etiqueta: 'Toma de muestras', prefijo: '/toma-de-muestras', subelementos: [] },
+  {
+    etiqueta: 'Recepción',
+    subelementos: [
+      { etiqueta: 'Pacientes', ruta: '/recepcion/pacientes' },
+      { etiqueta: 'Nueva orden', ruta: '/recepcion/nueva-orden' },
+      { etiqueta: 'Corte de caja', ruta: '/recepcion/corte-caja' }
+    ]
+  },
+  {
+    etiqueta: 'Catálogo',
+    subelementos: [
+      { etiqueta: 'Estudios', ruta: '/catalogo/estudios' },
+      { etiqueta: 'Perfiles', ruta: '/catalogo/perfiles' }
+    ]
+  },
+  {
+    etiqueta: 'Toma de muestras',
+    subelementos: []
+  },
   {
     etiqueta: 'Resultados',
-    prefijo: '/resultados',
-    ruta: '/resultados/ejemplo',
-    subelementos: [{ etiqueta: 'Página de ejemplo', ruta: '/resultados/ejemplo' }],
+    subelementos: [
+      { etiqueta: 'Plantilla de informes', ruta: '/resultados/plantillas' }
+    ]
   },
-  { etiqueta: 'Administración', prefijo: '/administracion', subelementos: [] },
-  { etiqueta: 'Reportes', prefijo: '/reportes', subelementos: [] },
+  {
+    etiqueta: 'Administración',
+    subelementos: []
+  },
+  {
+    etiqueta: 'Reportes',
+    subelementos: [
+      { etiqueta: 'Ejemplo', ruta: '/configuracion/plantilla-reporte' }
+    ]
+  }
 ]
 
-export function elementoActivo(ruta: string): ElementoMenu | null {
-  for (const elemento of MENU) {
-    if (ruta.startsWith(elemento.prefijo)) return elemento
-  }
-  return null
+export function elementoActivo(pathname: string): ElementoMenu | undefined {
+  return MENU.find((item) =>
+    item.subelementos.some((sub) => sub.ruta && pathname.startsWith(sub.ruta))
+  )
 }

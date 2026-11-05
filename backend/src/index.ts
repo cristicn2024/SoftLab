@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -5,6 +6,7 @@ import { prisma } from './config/db';
 import templateRoutes from './routes/template.routes';
 import orderCaptureRoutes from './routes/orderCapture.routes';
 import paymentRoutes from './routes/payment.routes';
+import cashCutRoutes from './routes/cashCut.routes';
 
 dotenv.config();
 
@@ -14,7 +16,6 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// Ruta de prueba para verificar Prisma + MySQL
 app.get('/api/health', async (_req, res) => {
   try {
     const tenantsCount = await prisma.tenant.count();
@@ -30,8 +31,12 @@ app.get('/api/health', async (_req, res) => {
 
 app.use('/api', templateRoutes);
 app.use('/api', paymentRoutes);
-
+app.use('/api', cashCutRoutes);
 app.use('/api', orderCaptureRoutes);
+
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Ruta no encontrada' });
+});
 
 app.listen(PORT, () => {
   console.log(`Servidor de Softlab corriendo en http://localhost:${PORT}`);

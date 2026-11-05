@@ -210,3 +210,26 @@
   color: var(--sl-secundario);
   font-size: 14px;
 }
+
+@media print {
+  .no-print,
+  .sl-sidebar,
+  .sl-barra,
+  .sl-pie {
+    display: none !important;
+  }
+
+  .sl-shell,
+  .sl-workspace {
+    display: block;
+    min-height: 0;
+    background: #fff;
+  }
+
+  .sl-pagina {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+}

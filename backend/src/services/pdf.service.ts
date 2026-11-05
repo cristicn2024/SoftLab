@@ -264,22 +264,26 @@ export async function generateReportPDF(data: ReportData): Promise<Buffer> {
   `;
 
   const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
-  const page = await browser.newPage();
-  await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
-  const pdfBuffer = await page.pdf({
-    format: 'Letter',
-    printBackground: true,
-    displayHeaderFooter: true,
-    headerTemplate: '<div></div>',
-    footerTemplate: `
-      <div style="font-size: 8pt; width: 100%; text-align: right; padding-right: 30px; color: #64748b;">
-        Página <span class="pageNumber"></span> de <span class="totalPages"></span>
-      </div>
-    `,
-    margin: { top: '140px', bottom: '100px', left: '30px', right: '30px' }
-  });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(htmlContent, { waitUntil: 'load' });
 
-  await browser.close();
-  return Buffer.from(pdfBuffer);
+    const pdfBuffer = await page.pdf({
+      format: 'Letter',
+      printBackground: true,
+      displayHeaderFooter: true,
+      headerTemplate: '<div></div>',
+      footerTemplate: `
+        <div style="font-size: 8pt; width: 100%; text-align: right; padding-right: 30px; color: #64748b;">
+          Página <span class="pageNumber"></span> de <span class="totalPages"></span>
+        </div>
+      `,
+      margin: { top: '140px', bottom: '100px', left: '30px', right: '30px' }
+    });
+
+    return Buffer.from(pdfBuffer);
+  } finally {
+    await browser.close();
+  }
 }

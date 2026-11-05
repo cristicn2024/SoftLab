@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 
 interface VersionItem {
@@ -21,7 +20,6 @@ interface NotificationState {
 }
 
 export const ReportTemplatePage: React.FC = () => {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -110,72 +108,18 @@ export const ReportTemplatePage: React.FC = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Cargando plantilla...</div>;
+  if (loading) {
+    return (
+      <main className="sl-pagina">
+        <div className="sl-migas">Resultados / Plantillas de informe</div>
+        <div style={{ padding: '40px', textAlign: 'center' }}>Cargando plantilla...</div>
+      </main>
+    );
+  }
 
   return (
-    <div style={styles.appContainer}>
-      {/* 1. BARRA SUPERIOR */}
-      <header style={styles.topHeader}>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>LABORATORIO</span>
-          <span style={styles.infoValue}>Laboratorio Santa Lucía</span>
-        </div>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>SUCURSAL</span>
-          <span style={styles.infoValue}>Clínica Central</span>
-        </div>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>USUARIO</span>
-          <span style={styles.infoValue}>Laura Méndez</span>
-        </div>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>ROL</span>
-          <span style={styles.infoValue}>Administradora</span>
-        </div>
-      </header>
-
-      <div style={styles.mainLayout}>
-        {/* 2. SIDEBAR */}
-        <aside style={styles.sidebar}>
-          <div style={styles.brandTitle}>SoftLab</div>
-          <nav style={styles.navMenu}>
-            <div style={styles.navGroup}>
-              <div style={styles.navItem}>
-                Recepción <span style={styles.arrow}>˅</span>
-              </div>
-              <div style={styles.submenu}>
-                <div style={styles.subItem} onClick={() => navigate('/corte-caja')}>
-                  Corte de caja
-                </div>
-              </div>
-            </div>
-            <div style={styles.navItem}>Catálogo <span style={styles.arrow}>›</span></div>
-            <div style={styles.navItem}>Toma de muestras <span style={styles.arrow}>›</span></div>
-            <div style={styles.navGroup}>
-              <div style={{ ...styles.navItem, fontWeight: 'bold' }}>
-                Resultados <span style={styles.arrow}>˅</span>
-              </div>
-              <div style={styles.submenu}>
-                <div style={styles.subItem}>Captura de resultados</div>
-                <div style={styles.subItem}>Por validar</div>
-                <div style={styles.subItem}>Envíos</div>
-                <div style={styles.subItem}>Rangos de referencia</div>
-                <div style={{ ...styles.subItem, ...styles.activeSubItem }}>
-                  Plantillas de informe
-                </div>
-              </div>
-            </div>
-            <div style={styles.navItem}>Administración <span style={styles.arrow}>›</span></div>
-            <div style={styles.navItem}>Reportes <span style={styles.arrow}>›</span></div>
-          </nav>
-        </aside>
-
-        {/* 3. ÁREA DE CONTENIDO */}
-        <main style={styles.contentArea}>
-          {/* Miga de Pan */}
-          <div style={{ ...styles.breadcrumb, textAlign: 'left' }}>
-            Resultados / Plantillas / Biometría hemática
-          </div>
+    <main className="sl-pagina">
+      <div className="sl-migas">Resultados / Plantillas / Biometría hemática</div>
 
           {/* BANNER DE NOTIFICACIÓN DE FIGMA */}
           {notification.show && (
@@ -386,16 +330,14 @@ export const ReportTemplatePage: React.FC = () => {
             </table>
           </section>
 
-          {/* BOTÓN DE ACCIÓN */}
-          <div style={styles.actionRow}>
-            <button style={styles.publishBtn} onClick={handleSave} disabled={saving}>
-              {saving ? 'Guardando...' : 'Publicar plantilla'}
-              <span style={styles.shortcutBadge}>Ctrl + S</span>
-            </button>
-          </div>
-        </main>
+      {/* BOTÓN DE ACCIÓN */}
+      <div style={styles.actionRow}>
+        <button style={styles.publishBtn} onClick={handleSave} disabled={saving}>
+          {saving ? 'Guardando...' : 'Publicar plantilla'}
+          <span style={styles.shortcutBadge}>Ctrl + S</span>
+        </button>
       </div>
-    </div>
+    </main>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSesion } from '../compartido/sesionContext';
 import { api } from '../services/api';
 
 interface BranchOption {
@@ -267,7 +267,7 @@ const KpiCard: React.FC<{
 };
 
 export const CashCutPage: React.FC = () => {
-  const navigate = useNavigate();
+  const { actualizarSesion } = useSesion();
 
   const [context, setContext] = useState<CashCutContext | null>(null);
   const [contextLoading, setContextLoading] = useState(true);
@@ -323,6 +323,25 @@ export const CashCutPage: React.FC = () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!context) return;
+    const currentBranchName =
+      context.currentUser.branchId !== null
+        ? context.branches.find(item => item.id === context.currentUser.branchId)?.name
+        : undefined;
+    const branch =
+      data?.scope.branchName ??
+      context.branches.find(item => item.id === branchId)?.name ??
+      currentBranchName;
+
+    actualizarSesion({
+      laboratorio: context.tenant.name,
+      sucursal: branch ?? 'Clínica Central',
+      usuario: context.currentUser.fullName,
+      rol: context.currentUser.role === 'admin' ? 'Administradora' : 'Cajero'
+    });
+  }, [actualizarSesion, branchId, context, data]);
 
   useEffect(() => {
     if (!branchId || !cashierId || !date) return;
@@ -490,49 +509,13 @@ export const CashCutPage: React.FC = () => {
 
   const handlePrint = () => window.print();
 
-  const sidebarContent = (
-    <aside style={styles.sidebar} className="no-print">
-      <div style={styles.brandTitle}>SoftLab</div>
-      <nav style={styles.navMenu}>
-        <div style={styles.navGroup}>
-          <div style={{ ...styles.navItem, fontWeight: 700, color: '#171717' }}>
-            Recepción <span style={styles.arrow}>˅</span>
-          </div>
-          <div style={styles.submenu}>
-            <div style={{ ...styles.subItem, ...styles.activeSubItem }}>Corte de caja</div>
-            <div style={styles.subItem} onClick={() => navigate('/')}>
-              Plantillas de informe
-            </div>
-          </div>
-        </div>
-        <div style={styles.navItem}>
-          Catálogo <span style={styles.arrow}>›</span>
-        </div>
-        <div style={styles.navItem}>
-          Toma de muestras <span style={styles.arrow}>›</span>
-        </div>
-        <div style={styles.navItem}>
-          Resultados <span style={styles.arrow}>›</span>
-        </div>
-        <div style={styles.navItem}>
-          Administración <span style={styles.arrow}>›</span>
-        </div>
-        <div style={styles.navItem}>
-          Reportes <span style={styles.arrow}>›</span>
-        </div>
-      </nav>
-    </aside>
-  );
-
   return (
-    <div style={styles.appContainer} className="cashcut-app">
+    <main className="sl-pagina">
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          .cashcut-app { margin-left: 0 !important; width: 100% !important; }
           .print-card { box-shadow: none !important; border: 1px solid #ddd !important; }
           body { background: #ffffff !important; }
-          #root { width: 100% !important; max-width: 100% !important; border: none !important; }
         }
         .kpi-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
         .cuadre-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; }
@@ -547,36 +530,7 @@ export const CashCutPage: React.FC = () => {
         }
       `}</style>
 
-      <header style={styles.topHeader} className="no-print">
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>LABORATORIO</span>
-          <span style={styles.infoValue}>{context?.tenant.name ?? 'Laboratorio Santa Lucía'}</span>
-        </div>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>SUCURSAL</span>
-          <span style={styles.infoValue}>
-            {data?.scope.branchName ??
-              context?.branches.find(branch => branch.id === branchId)?.name ??
-              'Clínica Central'}
-          </span>
-        </div>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>USUARIO</span>
-          <span style={styles.infoValue}>{context?.currentUser.fullName ?? 'Laura Méndez'}</span>
-        </div>
-        <div style={styles.infoGroup}>
-          <span style={styles.infoLabel}>ROL</span>
-          <span style={styles.infoValue}>
-            {context?.currentUser.role === 'admin' ? 'Administradora' : 'Cajero'}
-          </span>
-        </div>
-      </header>
-
-      <div style={styles.mainLayout}>
-        {sidebarContent}
-
-        <main style={styles.contentArea}>
-          <div style={styles.breadcrumb}>Recepción / Corte de caja</div>
+      <div className="sl-migas">Recepción / Corte de caja</div>
 
           {contextLoading && <div style={styles.stateBox}>Cargando contexto de caja...</div>}
 
@@ -1057,9 +1011,7 @@ export const CashCutPage: React.FC = () => {
               )}
             </>
           )}
-        </main>
-      </div>
-    </div>
+    </main>
   );
 };
 

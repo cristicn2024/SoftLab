@@ -33,6 +33,7 @@ export const MENU: ElementoMenu[] = [
   {
     etiqueta: 'Resultados',
     subelementos: [
+      { etiqueta: 'Entrega de resultados', ruta: '/resultados/entrega' },
       { etiqueta: 'Plantilla de informes', ruta: '/resultados/plantillas' }
     ]
   },

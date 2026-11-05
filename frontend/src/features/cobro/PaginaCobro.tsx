@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Aviso } from '../../compartido/Aviso'
 import { Cargando } from '../../compartido/Cargando'
 import { MensajeError } from '../../compartido/MensajeError'
@@ -106,6 +106,7 @@ export default function PaginaCobro() {
     <main className="sl-pagina cb-pagina">
       <div className="sl-migas">Recepción / Nueva orden / Cobro</div>
       <h1>{titulo}</h1>
+      <Link to={`/resultados/entrega?orden=${ordenId}`}>Ir a entrega de resultados</Link>
       <p className="sl-subtitulo">
         {orden.paciente} · {orden.expediente} · {orden.edad} años · {orden.sexo} · {orden.medico}
       </p>

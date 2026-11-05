@@ -108,7 +108,7 @@ async function buildBilling(tenantId: number, orderId: number) {
     },
     doctorName: order.doctorName,
     branch: { id: order.branch.id, name: order.branch.name },
-    items: order.items.map((item) => ({ code: item.test.code, name: item.test.name, price: toPesos(toCents(item.price)) })),
+    items: order.items.map((item) => ({ code: item.test?.code ?? 'PERFIL', name: item.test?.name ?? 'Perfil', price: toPesos(toCents(item.price)) })),
     discount: { percent: order.discountPercent, reason: order.discountReason, authorizedBy: order.discountAuthorizedBy },
     invoice,
     subtotal: toPesos(subtotal),
@@ -160,6 +160,7 @@ export async function registerPayments(req: Request, res: Response) {
     const canAuthorize = ROLES_WITH_SPECIAL_PERMISSION.includes(user.role);
 
     await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId} AND tenant_id = ${tenantId} FOR UPDATE`;
       const order = await tx.order.findFirst({
         where: { id: orderId, tenantId },
         include: { items: true, payments: true },
@@ -293,6 +294,11 @@ export async function cancelPayment(req: Request, res: Response) {
       if (!payment) throw new ValidationError('El pago no existe', 404);
       if (payment.cancelled) throw new ValidationError('El pago ya estaba cancelado.', 409);
 
+      await tx.$queryRaw`SELECT id FROM orders WHERE id = ${payment.orderId} AND tenant_id = ${tenantId} FOR UPDATE`;
+      const lockedPayment = await tx.payment.findFirst({ where: { id: payment.id, tenantId } });
+      if (!lockedPayment || lockedPayment.cancelled) throw new ValidationError('El pago ya estaba cancelado.', 409);
+      const deliveredOrder = await tx.order.findUniqueOrThrow({ where: { id: payment.orderId } });
+      if (deliveredOrder.resultsDeliveredAt) throw new ValidationError('No se puede cancelar un pago después de entregar resultados.', 409);
       await tx.payment.update({
         where: { id: payment.id },
         data: { cancelled: true, cancelReason: reason, cancelledBy: user.name, cancelledAt: new Date() },
@@ -310,7 +316,7 @@ export async function cancelPayment(req: Request, res: Response) {
         },
       });
       return order.id;
-    });
+    }, { isolationLevel: 'ReadCommitted' });
 
     return res.json(await buildBilling(tenantId, orderId));
   } catch (error) {

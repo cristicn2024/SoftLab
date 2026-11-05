@@ -1,49 +1,67 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { api } from '../services/api';
+import { SESION } from '../compartido/sesion';
+import { mensajeDeError } from '../features/cobro/cobroApi';
+import { ROLES_CON_PERMISO_ESPECIAL } from '../features/cobro/datosCobro';
 
-interface Props {
-  orderId: number;
-  isOpen: boolean;
-  onClose: () => void;
-}
+interface Props { orderId: number; isOpen: boolean; onClose: () => void }
 
-export const ReportViewerModal: React.FC<Props> = ({ orderId, isOpen, onClose }) => {
+export function ReportViewerModal({ orderId, isOpen, onClose }: Props) {
+  const [pdf, setPdf] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState('');
+  const [channel, setChannel] = useState('counter');
+  const [blocked, setBlocked] = useState(false);
+  useEffect(() => {
+    setPdf(''); setError(''); setBlocked(false); setReason('');
+  }, [orderId, isOpen]);
+  useEffect(() => () => { if (pdf) URL.revokeObjectURL(pdf); }, [pdf]);
   if (!isOpen) return null;
 
-  const pdfUrl = `http://localhost:4000/api/reports/orders/${orderId}/pdf`;
+  async function obtener(excepcion = false) {
+    setBusy(true); setError(''); setPdf(''); setBlocked(false);
+    try {
+      const response = await api.post(`/reports/orders/${orderId}/pdf`, {
+        channel, ...(excepcion ? { reason } : {}),
+      }, { responseType: 'blob', headers: {
+        'x-user-name': encodeURIComponent(SESION.usuario),
+        'x-user-role': encodeURIComponent(SESION.rol),
+      } });
+      setPdf(URL.createObjectURL(response.data));
+    } catch (err) {
+      const response = (err as { response?: { data?: Blob } }).response;
+      if (response?.data instanceof Blob) {
+        try {
+          const data = JSON.parse(await response.data.text());
+          setError(data.error); setBlocked(data.code === 'PAYMENT_REQUIRED');
+        } catch { setError('No se pudo obtener el informe.'); }
+      } else setError(mensajeDeError(err));
+    } finally { setBusy(false); }
+  }
 
-  const handlePrint = () => {
-    const iframe = document.getElementById('pdf-frame') as HTMLIFrameElement;
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-    }
-  };
-
-  return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-    }}>
-      <div style={{ background: '#fff', width: '80%', height: '90%', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '15px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0 }}>Vista Previa del Informe Clínico</h3>
-          <div>
-            <button onClick={handlePrint} style={{ marginRight: '10px', padding: '8px 16px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-              Imprimir Informe
-            </button>
-            <button onClick={onClose} style={{ padding: '8px 16px', background: '#e2e8f0', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-              Cerrar
-            </button>
-          </div>
-        </div>
-        
-        <iframe 
-          id="pdf-frame"
-          src={pdfUrl}
-          title="PDF Report"
-          style={{ width: '100%', height: '100%', border: 'none' }}
-        />
-      </div>
-    </div>
-  );
-};
+  return <div role="dialog" aria-modal="true" aria-label="Entrega de resultados" style={{
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex',
+    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+  }}><section style={{ background: 'white', padding: 24, width: '85%', height: '90%', overflow: 'auto' }}>
+    <h2>Entrega de resultados · Orden {orderId}</h2>
+    <label>Canal <select value={channel} disabled={busy} onChange={e => { setChannel(e.target.value); setPdf(''); }}>
+      <option value="counter">Mostrador</option><option value="print">Impresión</option>
+      <option value="email">Correo (descargar para adjuntar)</option><option value="portal">Portal</option>
+    </select></label>{' '}
+    <button disabled={busy} onClick={() => obtener()}>{busy ? 'Verificando…' : 'Obtener resultados'}</button>{' '}
+    <button disabled={busy} onClick={onClose}>Cerrar</button>
+    {error && <p role="alert">{error}</p>}
+    {blocked && <div>
+      <Link to={`/ordenes/cobro?orden=${orderId}`} onClick={onClose}>Registrar pago</Link>
+      <p>Al liquidar, vuelve a obtener los resultados. Puedes seguir capturando y validando mientras exista saldo.</p>
+      {ROLES_CON_PERMISO_ESPECIAL.includes(SESION.rol) && <div>
+        <label>Motivo de excepción <textarea value={reason} maxLength={1000} onChange={e => setReason(e.target.value)} /></label>
+        <button disabled={busy || !reason.trim()} onClick={() => obtener(true)}>Autorizar excepción y obtener resultados</button>
+      </div>}
+    </div>}
+    {pdf && <><p>Documento liberado. <a href={pdf} download={`Informe_Orden_${orderId}.pdf`}>Descargar informe</a></p>
+      <iframe src={pdf} title="Informe de resultados" style={{ width: '100%', height: '70%', border: 0 }} /></>}
+  </section></div>;
+}

@@ -8,6 +8,8 @@ import { ReportTemplatePage } from './pages/ReportTemplatePage'
 const PaginaEjemplo = lazy(() => import('./features/ejemplo/PaginaEjemplo'))
 const PaginaCobro = lazy(() => import('./features/cobro/PaginaCobro'))
 
+const PaginaEntrega = lazy(() => import('./features/entrega/PaginaEntrega'))
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -17,6 +19,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/recepcion/nueva-orden" replace />} />
             <Route path="recepcion/nueva-orden" element={<OrderCapturePage />} />
             <Route path="ordenes/cobro" element={<PaginaCobro />} />
+            <Route path="resultados/entrega" element={<PaginaEntrega />} />
             <Route path="resultados/plantillas" element={<ReportTemplatePage />} />
             <Route path="resultados/ejemplo" element={<PaginaEjemplo />} />
           </Route>

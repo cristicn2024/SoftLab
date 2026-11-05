@@ -6,7 +6,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "jest"
+    "test": "jest",
+    "test:delivery": "node --test src/__tests__/delivery.test.cjs",
+    "seed:hu55": "node prisma/seed-hu55.cjs"
   },
   "keywords": [],
   "author": "",

@@ -23,9 +23,7 @@ export class PlantillasService {
     const last = await this.repository.findLatest(tenantId);
     const newVersion = (last?.version || 0) + 1;
 
-    await this.repository.unsetDefaults(tenantId);
-
-    return this.repository.create({
+    return this.repository.createAsDefault({
       tenantId,
       name: `Biometría hemática · v${newVersion}`,
       headerText: input.headerText,

@@ -34,13 +34,10 @@ export class FakeRepository implements PlantillasRepository {
     return list;
   }
 
-  async unsetDefaults(tenantId: number): Promise<void> {
+  async createAsDefault(data: NewTemplateData): Promise<ReportTemplate> {
     for (const row of this.rows) {
-      if (row.tenantId === tenantId) row.isDefault = false;
+      if (row.tenantId === data.tenantId) row.isDefault = false;
     }
-  }
-
-  async create(data: NewTemplateData): Promise<ReportTemplate> {
     const now = new Date(2026, 10, 3, 9, 0);
     const row: ReportTemplate = {
       id: this.nextId++,

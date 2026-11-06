@@ -28,14 +28,13 @@ export class PlantillasPrismaRepository implements PlantillasRepository {
     });
   }
 
-  async unsetDefaults(tenantId: number): Promise<void> {
-    await this.prisma.reportTemplate.updateMany({
-      where: { tenantId },
-      data: { isDefault: false },
+  createAsDefault(data: NewTemplateData): Promise<ReportTemplate> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.reportTemplate.updateMany({
+        where: { tenantId: data.tenantId },
+        data: { isDefault: false },
+      });
+      return tx.reportTemplate.create({ data });
     });
-  }
-
-  create(data: NewTemplateData): Promise<ReportTemplate> {
-    return this.prisma.reportTemplate.create({ data });
   }
 }

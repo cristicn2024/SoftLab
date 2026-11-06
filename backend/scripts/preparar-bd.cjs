@@ -48,6 +48,6 @@ if (!crearTablas()) {
   process.exit(1);
 }
 
-if (!correr('npx tsx prisma/seed.ts todo --si-vacia')) {
+if (!correr('npx tsx prisma/seed.ts --si-vacia')) {
   process.exit(1);
 }

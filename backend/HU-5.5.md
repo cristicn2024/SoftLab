@@ -23,23 +23,22 @@ Requiere una plantilla predeterminada para emitir el informe.
 ## Datos de prueba
 
 Desde `backend`, ejecutar `npx prisma generate`, `npx prisma db push --skip-generate`
-y `npm run seed:hu55`. Detener el backend antes de regenerar Prisma en Windows.
-El seed utiliza el laboratorio 1 (el que envía actualmente el frontend), conserva
-su configuración si existe y crea una plantilla predeterminada si no hay ninguna.
-No borra datos ni reinicia órdenes existentes. La consola muestra los IDs reales;
-no se debe asumir que las órdenes tendrán siempre IDs del 1 al 6.
+y `npm run db:seed`. Detener el backend antes de regenerar Prisma en Windows.
+El seed borra y vuelve a crear el laboratorio demo (id 1, el que envía actualmente
+el frontend) con una plantilla predeterminada y todos sus datos. La consola muestra
+una tabla con el ID real de cada orden y el caso que prueba; no se debe asumir que
+las órdenes tendrán siempre los mismos IDs.
 
-| Escenario | Saldo inicial | Resultado esperado |
+| Caso del seed | Saldo | Resultado esperado |
 | --- | --- | --- |
-| Sin pago | $500 | Bloqueada; permite probar pago y excepción administrativa |
-| Pago parcial | $300 | Bloqueada hasta liquidar |
-| Liquidada | $0 | Permite emitir PDF |
-| Liquidada con descuento del 10% | $0 | Permite emitir PDF con pago de $450 |
-| Pago cancelado | $500 | El pago cancelado no libera la entrega |
-| Orden cancelada | $0 | Bloqueada por cancelación |
+| entrega-lista | $0 | Permite emitir PDF |
+| entrega-con-saldo | $110 | Bloqueada; permite probar pago y excepción administrativa |
+| entregada-con-factura | $0 | Liquidada con descuento del 10% y ya entregada |
+| pago-anulado | $0 | El pago anulado no cuenta; libera con el cobro de tarjeta |
+| orden-cancelada | $0 | Bloqueada por cancelación |
 
 Abrir `/resultados/entrega?orden=ID` en el frontend y probar los cuatro canales.
-Las órdenes incluyen un estudio ficticio de $500 y un resultado validado.
+Las órdenes de esos casos tienen sus resultados validados.
 Para probar el desbloqueo automático, liquidar una orden con saldo desde el enlace
 Registrar pago y regresar a entrega. Para probar excepciones, la sesión demo
 actual tiene rol Administradora: proporcionar un motivo y volver a solicitar sin

@@ -14,11 +14,7 @@
     "test:all": "npm test && npm run test:nest && npm run test:screens && npm run test:hu",
     "db:preparar": "node scripts/preparar-bd.cjs",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma db push --force-reset --skip-generate && tsx prisma/seed.ts",
-    "db:seed:cashcut": "tsx prisma/seed.ts corte-caja",
-    "seed:hu-5-2-6-2": "tsx prisma/seed.ts hu-5-2-6-2",
-    "seed:hu-6-1": "tsx prisma/seed.ts hu-6-1",
-    "seed:hu55": "tsx prisma/seed.ts hu-5-5"
+    "db:reset": "prisma db push --force-reset --skip-generate && tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "",

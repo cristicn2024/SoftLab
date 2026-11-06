@@ -45,7 +45,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` crea `backend/.env` si no existe, genera el cliente de Prisma, crea la base `softlab_db` con todas sus tablas y carga los datos de prueba si la base está vacía. No hace falta correr SQL a mano ni ejecutar los seeds por separado.
+`npm run dev` crea `backend/.env` si no existe, genera el cliente de Prisma, crea la base `softlab_db` con todas sus tablas y carga los datos de prueba si la base está vacía. No hace falta correr SQL a mano ni ejecutar el seed por separado.
 
 2. En la carpeta `frontend`:
 
@@ -58,14 +58,15 @@ Para levantar todo con Docker: `docker compose up --build`. El backend prepara l
 
 ### Datos de prueba
 
-Hay un solo laboratorio, Santa Lucía (id 1, el que manda el frontend en `x-tenant-id`), con los datos de todas las historias: catálogo, orden de cobro, HU 5.2 y 6.2, lista de trabajo de la HU 6.1, corte de caja y los escenarios de entrega de la HU 5.5.
+Hay un solo laboratorio de demo, Santa Lucía (id 1, el que manda el frontend en `x-tenant-id`), con una historia completa: 2 sucursales, 5 usuarios, 3 médicos, 8 pacientes, catálogo con parámetros y rangos de referencia, perfiles, plantilla de informe y 21 órdenes repartidas entre hoy, ayer y antier. Cubren nueva orden, lista de trabajo y captura, cobro (sin pago, parcial, liquidada, con descuento, pago anulado y orden cancelada), entrega y corte de caja (dos cortes cerrados y turnos abiertos). Al terminar, la consola imprime el ID y el folio de cada orden con el caso que prueba.
+
+Las cuentas de prueba usan el correo `@santalucia.demo` y la contraseña `softlab2026`. Todavía no hay pantalla de login: la contraseña queda guardada con hash para cuando exista.
 
 | Comando (en `backend`) | Qué hace |
 | --- | --- |
 | `npm run db:preparar` | Lo que hace `npm run dev` antes de arrancar: tablas y datos si la base está vacía |
-| `npm run db:seed` | Carga todos los datos de prueba; lo que ya existe se conserva |
-| `npm run db:reset` | Borra todo y vuelve a cargar los datos de prueba |
-| `npm run seed:hu-5-2-6-2`, `seed:hu-6-1`, `db:seed:cashcut`, `seed:hu55` | Cargan solo una parte, igual que antes |
+| `npm run db:seed` | Borra y vuelve a crear el laboratorio demo; no toca otros laboratorios |
+| `npm run db:reset` | Borra toda la base y vuelve a cargar los datos de prueba |
 
 ### Si algo falla
 

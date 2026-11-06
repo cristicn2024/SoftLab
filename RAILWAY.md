@@ -12,9 +12,9 @@ servicios de aplicación a este repositorio y a la rama `integracion`.
 - Generar dominio HTTPS con puerto destino 4000.
 - En una base nueva de demo, ejecutar `npx prisma db push --skip-generate`
   como comando previo al despliegue. No agregar `--accept-data-loss`.
-- Una vez disponible la base, ejecutar `npm run seed:hu55` en el servicio backend.
-  El seed conserva los escenarios existentes. Otros seeds del sprint deben
-  revisarse antes de ejecutarse porque pueden modificar datos.
+- Una vez disponible la base, ejecutar `npm run db:seed` en el servicio backend.
+  El seed borra y vuelve a crear el laboratorio demo (id 1) y no toca otros
+  laboratorios. Ejecutarlo solo en una base de demo.
 
 El contenedor instala Chromium para generar PDFs. No cargar el archivo `.env`
 local ni publicar credenciales en el repositorio.

@@ -310,7 +310,7 @@ export const CashCutPage: React.FC = () => {
   useEffect(() => {
     if (!context) return;
     const currentBranchName =
-      context.currentUser?.branchId !== null
+      context.currentUser?.branchId != null
         ? context.branches.find(item => item.id === context.currentUser?.branchId)?.name
         : undefined;
     const branch =
@@ -376,10 +376,9 @@ export const CashCutPage: React.FC = () => {
 
   const availableCashiers = useMemo(() => {
     if (!context) return [];
-    const inBranch = context.cashiers.filter(
+    return context.cashiers.filter(
       cashier => cashier.branchId === branchId || cashier.branchId === null
     );
-    return inBranch.length > 0 ? inBranch : context.cashiers;
   }, [context, branchId]);
 
   const resetDraft = () => {
@@ -397,13 +396,14 @@ export const CashCutPage: React.FC = () => {
     const cashiers = context.cashiers.filter(
       cashier => cashier.branchId === nextBranch || cashier.branchId === null
     );
-    if (cashiers.length > 0 && !cashiers.some(cashier => cashier.id === cashierId)) {
-      setCashierId(cashiers[0].id);
+    if (cashierId === 0) return;
+    if (!cashiers.some(cashier => cashier.id === cashierId)) {
+      setCashierId(cashiers.length > 0 ? cashiers[0].id : 0);
     }
   };
 
   const handleClose = async () => {
-    if (!data || !cashierId || closed || closing) return;
+    if (!data || closed || closing) return;
 
     if (countedNumber === null || Number.isNaN(countedNumber) || countedNumber < 0) {
       setCloseError('Captura un efectivo contado válido (mayor o igual a cero).');
@@ -431,11 +431,9 @@ export const CashCutPage: React.FC = () => {
           countedCash: countedNumber,
           observation: observation.trim() || undefined
         },
-        {
-          headers: {
-            'x-user-id': String(context?.currentUser?.id ?? cashierId)
-          }
-        }
+        context?.currentUser
+          ? { headers: { 'x-user-id': String(context.currentUser.id) } }
+          : {}
       );
       setRefreshKey(key => key + 1);
     } catch (error) {
@@ -606,7 +604,8 @@ export const CashCutPage: React.FC = () => {
                       }}
                       disabled={contextLoading}
                     >
-                      {availableCashiers.length === 0 && <option value={0}>Sin cajeros registrados</option>}{availableCashiers.map(cashier => (
+                      <option value={0}>Sin asignar</option>
+                      {availableCashiers.map(cashier => (
                         <option key={cashier.id} value={cashier.id}>
                           {cashier.fullName}
                         </option>
@@ -968,13 +967,13 @@ export const CashCutPage: React.FC = () => {
                         type="button"
                         style={{
                           ...styles.primaryBtn,
-                          ...(!cashierId || closing || countedNumber === null ? styles.primaryBtnDisabled : {})
+                          ...(closing || countedNumber === null ? styles.primaryBtnDisabled : {})
                         }}
                         onClick={handleClose}
-                        disabled={!cashierId || closing || countedNumber === null}
+                        disabled={closing || countedNumber === null}
                       >
                         <Icon name="lock" size={16} color="#ffffff" />
-                        {!cashierId ? 'Se requiere cajero para cerrar' : closing ? 'Cerrando corte...' : 'Cerrar corte'}
+                        {closing ? 'Cerrando corte...' : 'Cerrar corte'}
                       </button>
                     )}
                   </div>

@@ -89,6 +89,20 @@ const closedSummary = summary({
   observation: 'Faltante de cambio',
 });
 
+const contextSinUsuarios = {
+  ...context,
+  currentUser: null,
+  cashiers: [],
+};
+
+const unassignedSummary = summary({
+  scope: {
+    ...summary().scope,
+    cashierId: 0,
+    cashierName: 'Sin asignar',
+  },
+});
+
 function renderPage() {
   return render(
     <SesionProvider>
@@ -97,9 +111,12 @@ function renderPage() {
   );
 }
 
-function mockApi(summaryPayload: ReturnType<typeof summary>) {
+function mockApi(
+  summaryPayload: ReturnType<typeof summary>,
+  contextPayload: typeof context | typeof contextSinUsuarios = context,
+) {
   (api.get as any).mockImplementation((url: string) => {
-    if (url === '/cash-cuts/context') return Promise.resolve({ data: context });
+    if (url === '/cash-cuts/context') return Promise.resolve({ data: contextPayload });
     if (url === '/cash-cuts/summary') return Promise.resolve({ data: summaryPayload });
     return Promise.resolve({ data: {} });
   });
@@ -177,6 +194,35 @@ describe('Pantalla de corte de caja (frontend)', () => {
 
     expect(screen.getByRole('button', { name: /Cerrar corte/i })).toBeDisabled();
     expect(screen.getByText('Captura el efectivo contado')).toBeInTheDocument();
+  });
+
+  it('permite cerrar el corte sin usuarios registrados', async () => {
+    mockApi(unassignedSummary, contextSinUsuarios);
+    (api.post as any).mockResolvedValue({ data: { cutId: 88 } });
+
+    renderPage();
+    await screen.findByText('Efectivo total');
+
+    expect(screen.getByLabelText('Cajero')).toHaveValue('0');
+    expect(screen.getByRole('option', { name: 'Sin asignar' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Efectivo contado'), { target: { value: '1500' } });
+    const cerrar = screen.getByRole('button', { name: /Cerrar corte/i });
+    expect(cerrar).toBeEnabled();
+    fireEvent.click(cerrar);
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    expect(api.post).toHaveBeenCalledWith(
+      '/cash-cuts/close',
+      expect.objectContaining({
+        branchId: 10,
+        cashierId: 0,
+        shift: 'matutino',
+        date: '2026-01-15',
+        countedCash: 1500,
+      }),
+      {},
+    );
   });
 
   it('muestra el corte cerrado en solo lectura con su diferencia y observación congeladas', async () => {

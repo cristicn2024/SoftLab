@@ -19,7 +19,8 @@ function tenantIdFrom(req: Request) {
 
 function userIdFrom(req: Request, fallback: number) {
   const value = Number(req.headers['x-user-id']);
-  return Number.isFinite(value) && value > 0 ? value : fallback;
+  if (Number.isFinite(value) && value > 0) return value;
+  return fallback > 0 ? fallback : null;
 }
 
 function formatValidationErrors(errors: ValidationError[]) {

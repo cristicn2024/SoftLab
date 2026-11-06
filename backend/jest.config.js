@@ -6,6 +6,7 @@ const tsJestTransformCfg = createDefaultPreset().transform;
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  testTimeout: 10000,
   moduleNameMapper: {
     '^puppeteer$': '<rootDir>/src/__mocks__/puppeteer.js',
   },

@@ -77,7 +77,11 @@ Hay un solo laboratorio, Santa Lucía (id 1, el que manda el frontend en `x-tena
 
 ## Rutas para observar el funcionamiento
 
-- [Nueva orden](http://localhost:5173/ordenes/nueva)
-- [Captura de resultados](http://localhost:5173/resultados/captura/SL-261020-0057)
+- [Nueva orden](http://localhost:5173/recepcion/nueva-orden)
+- [Cobro](http://localhost:5173/ordenes/cobro)
+- [Corte de caja](http://localhost:5173/ordenes/corte-caja)
+- [Lista de trabajo](http://localhost:5173/resultados/lista-de-trabajo)
+- [Entrega de resultados](http://localhost:5173/resultados/entrega)
+- [Plantillas de informe](http://localhost:5173/resultados/plantillas)
 
 > Mantén las terminales del backend y frontend abiertas mientras revisas la aplicación.

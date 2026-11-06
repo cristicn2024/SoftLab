@@ -3,7 +3,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { prisma } from './config/db';
-import featureRoutes from './routes/feature.routes';
 import { errorHandler } from './middleware/error-handler';
 
 dotenv.config();
@@ -27,8 +26,6 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-
-app.use('/api', featureRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada' });

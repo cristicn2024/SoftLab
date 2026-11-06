@@ -35,7 +35,9 @@ export function ReportViewerModal({ orderId, isOpen, onClose }: Props) {
       if (response?.data instanceof Blob) {
         try {
           const data = JSON.parse(await response.data.text());
-          setError(data.error); setBlocked(data.code === 'PAYMENT_REQUIRED');
+          const detalle = data.error;
+          const mensaje = typeof detalle === 'string' ? detalle : detalle?.mensaje;
+          setError(mensaje || 'No se pudo obtener el informe.'); setBlocked(data.code === 'PAYMENT_REQUIRED');
         } catch { setError('No se pudo obtener el informe.'); }
       } else setError(mensajeDeError(err));
     } finally { setBusy(false); }

@@ -13,7 +13,6 @@
     "test:nest": "jest --testMatch \"**/modules/**/*.spec.ts\"",
     "test:all": "npm test && npm run test:nest && npm run test:screens",
     "test:jest": "jest",
-    "test:delivery": "node --test src/__tests__/delivery.test.cjs",
     "db:preparar": "node scripts/preparar-bd.cjs",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset --skip-generate && tsx prisma/seed.ts",

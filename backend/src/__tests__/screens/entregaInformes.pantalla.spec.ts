@@ -1,16 +1,16 @@
-import { after, before, describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import reportRoutes from '../../routes/report.routes';
 import { prisma } from '../../config/db';
-import { buildApp, closeDatabase, createScreenFixture, headers, type ScreenFixture } from './support';
+import { closeDatabase, createScreenFixture, headers, type ScreenFixture } from './support';
+import { construirAppNest } from './support-nest';
+
+jest.setTimeout(30000);
 
 // Pantalla "Entrega de resultados" (HU-06)
 // GET|POST /reports/orders/:orderId/pdf · GET /verify-report/:token
 
-const app = buildApp(reportRoutes);
-
 describe('Pantalla de entrega de informes PDF', () => {
+  let app: INestApplication;
   let fixture: ScreenFixture;
   let unpaidOrder: Awaited<ReturnType<ScreenFixture['createOrder']>>;
   let cancelledOrder: Awaited<ReturnType<ScreenFixture['createOrder']>>;
@@ -18,7 +18,8 @@ describe('Pantalla de entrega de informes PDF', () => {
   let verifiedOrder: Awaited<ReturnType<ScreenFixture['createOrder']>>;
   const qrToken = 'qa-token-verificacion-0001';
 
-  before(async () => {
+  beforeAll(async () => {
+    app = await construirAppNest();
     // Este laboratorio se queda sin plantilla a propósito para probar el bloqueo de emisión.
     fixture = await createScreenFixture('entrega');
 
@@ -39,101 +40,102 @@ describe('Pantalla de entrega de informes PDF', () => {
     });
   });
 
-  after(async () => {
+  afterAll(async () => {
+    await app.close();
     await fixture.cleanup();
     await closeDatabase();
   });
 
   it('valida el identificador de la orden', async () => {
-    const notNumber = await request(app)
+    const notNumber = await request(app.getHttpServer())
       .get('/api/reports/orders/abc/pdf')
       .set(headers(fixture.tenantId));
-    assert.equal(notNumber.status, 400);
-    assert.equal(notNumber.body.error, 'Orden o laboratorio no válido');
+    expect(notNumber.status).toBe(400);
+    expect(notNumber.body.error.mensaje).toBe('Orden o laboratorio no válido');
 
-    const zero = await request(app)
+    const zero = await request(app.getHttpServer())
       .get('/api/reports/orders/0/pdf')
       .set(headers(fixture.tenantId));
-    assert.equal(zero.status, 400);
-    assert.equal(zero.body.error, 'Orden o laboratorio no válido');
+    expect(zero.status).toBe(400);
+    expect(zero.body.error.mensaje).toBe('Orden o laboratorio no válido');
   });
 
   it('valida el canal de entrega', async () => {
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .get(`/api/reports/orders/${paidOrder.id}/pdf?channel=fax`)
       .set(headers(fixture.tenantId));
 
-    assert.equal(res.status, 400);
-    assert.equal(res.body.error, 'Canal de entrega no válido');
+    expect(res.status).toBe(422);
+    expect(res.body.error.mensaje).toBe('Canal de entrega no válido');
   });
 
   it('responde 404 cuando la orden no existe', async () => {
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .get('/api/reports/orders/999999999/pdf')
       .set(headers(fixture.tenantId));
 
-    assert.equal(res.status, 404);
-    assert.equal(res.body.error, 'La orden no existe');
+    expect(res.status).toBe(404);
+    expect(res.body.error.mensaje).toBe('La orden no existe');
   });
 
   it('bloquea la entrega con saldo pendiente en cualquier canal', async () => {
-    const getRes = await request(app)
+    const getRes = await request(app.getHttpServer())
       .get(`/api/reports/orders/${unpaidOrder.id}/pdf?channel=portal`)
       .set(headers(fixture.tenantId));
 
-    assert.equal(getRes.status, 409);
-    assert.equal(getRes.body.code, 'PAYMENT_REQUIRED');
-    assert.equal(getRes.body.balance, '250.00');
-    assert.equal(getRes.body.paymentUrl, `/ordenes/cobro?orden=${unpaidOrder.id}`);
-    assert.match(getRes.body.error, /Saldo pendiente: \$250\.00/);
-    assert.match(String(getRes.headers['cache-control']), /no-store/);
+    expect(getRes.status).toBe(409);
+    expect(getRes.body.code).toBe('PAYMENT_REQUIRED');
+    expect(getRes.body.balance).toBe('250.00');
+    expect(getRes.body.paymentUrl).toBe(`/ordenes/cobro?orden=${unpaidOrder.id}`);
+    expect(getRes.body.error).toMatch(/Saldo pendiente: \$250\.00/);
+    expect(String(getRes.headers['cache-control'])).toMatch(/no-store/);
 
-    const postRes = await request(app)
+    const postRes = await request(app.getHttpServer())
       .post(`/api/reports/orders/${unpaidOrder.id}/pdf`)
       .set(headers(fixture.tenantId, { 'x-user-name': 'Recepción QA', 'x-user-role': 'receptionist' }))
       .send({ channel: 'email' });
 
-    assert.equal(postRes.status, 409);
-    assert.equal(postRes.body.code, 'PAYMENT_REQUIRED');
+    expect(postRes.status).toBe(409);
+    expect(postRes.body.code).toBe('PAYMENT_REQUIRED');
 
     const logs = await prisma.paymentLog.findMany({
       where: { tenantId: fixture.tenantId, orderId: unpaidOrder.id },
     });
-    assert.ok(logs.some(log => log.action === 'Entrega bloqueada' && log.detail.includes('Canal: email')));
+    expect(logs.some((log) => log.action === 'Entrega bloqueada' && log.detail.includes('Canal: email'))).toBe(true);
   });
 
   it('no libera el informe sin motivo aunque el usuario sea administrador', async () => {
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .post(`/api/reports/orders/${unpaidOrder.id}/pdf`)
       .set(headers(fixture.tenantId, { 'x-user-name': 'Administradora QA', 'x-user-role': 'Administradora' }))
       .send({ channel: 'counter', reason: '   ' });
 
-    assert.equal(res.status, 409);
-    assert.equal(res.body.code, 'PAYMENT_REQUIRED');
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('PAYMENT_REQUIRED');
   });
 
   it('no entrega informes de una orden cancelada', async () => {
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .get(`/api/reports/orders/${cancelledOrder.id}/pdf`)
       .set(headers(fixture.tenantId));
 
-    assert.equal(res.status, 409);
-    assert.equal(res.body.error, 'La orden está cancelada');
+    expect(res.status).toBe(409);
+    expect(res.body.error.mensaje).toBe('La orden está cancelada');
   });
 
   it('exige una plantilla predeterminada para emitir el informe', async () => {
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .post(`/api/reports/orders/${paidOrder.id}/pdf`)
       .set(headers(fixture.tenantId))
       .send({ channel: 'counter' });
 
-    assert.equal(res.status, 500);
-    assert.equal(res.body.error, 'Error al generar informe PDF');
+    expect(res.status).toBe(500);
+    expect(res.body.error.mensaje).toBe('Error al generar informe PDF');
 
     const report = await prisma.orderReport.findFirst({ where: { orderId: paidOrder.id } });
-    assert.equal(report, null);
+    expect(report).toBeNull();
     const stored = await prisma.order.findUniqueOrThrow({ where: { id: paidOrder.id } });
-    assert.equal(stored.resultsDeliveredAt, null);
+    expect(stored.resultsDeliveredAt).toBeNull();
   });
 
   it('valida un informe emitido con su token QR', async () => {
@@ -154,19 +156,19 @@ describe('Pantalla de entrega de informes PDF', () => {
       },
     });
 
-    const res = await request(app).get(`/api/verify-report/${qrToken}`);
+    const res = await request(app.getHttpServer()).get(`/api/verify-report/${qrToken}`);
 
-    assert.equal(res.status, 200);
-    assert.equal(res.body.valid, true);
-    assert.equal(res.body.laboratory, 'Laboratorio QA entrega');
-    assert.equal(res.body.patient, 'Paciente entrega');
-    assert.ok(res.body.issuedAt);
+    expect(res.status).toBe(200);
+    expect(res.body.valid).toBe(true);
+    expect(res.body.laboratory).toBe('Laboratorio QA entrega');
+    expect(res.body.patient).toBe('Paciente entrega');
+    expect(res.body.issuedAt).toBeTruthy();
   });
 
   it('marca como no auténtico un token desconocido', async () => {
-    const res = await request(app).get('/api/verify-report/token-inexistente');
+    const res = await request(app.getHttpServer()).get('/api/verify-report/token-inexistente');
 
-    assert.equal(res.status, 404);
-    assert.deepEqual(res.body, { valid: false, message: 'Documento no auténtico' });
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ valid: false, message: 'Documento no auténtico' });
   });
 });

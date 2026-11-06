@@ -5,7 +5,7 @@ export class IdPositivoPipe implements PipeTransform<unknown, number> {
 
   transform(valor: unknown): number {
     const id = Number(valor);
-    if (!Number.isInteger(id) || id <= 0) {
+    if (!Number.isSafeInteger(id) || id <= 0) {
       throw new BadRequestException(this.mensaje);
     }
     return id;

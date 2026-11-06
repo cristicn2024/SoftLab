@@ -4,7 +4,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { prisma } from './config/db';
 import orderCaptureRoutes from './routes/orderCapture.routes';
-import reportRoutes from './routes/report.routes';
 import cashCutRoutes from './routes/cashCut.routes';
 import featureRoutes from './routes/feature.routes';
 import { errorHandler } from './middleware/error-handler';
@@ -30,7 +29,6 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-app.use('/api', reportRoutes);
 
 app.use('/api', cashCutRoutes);
 app.use('/api', orderCaptureRoutes);

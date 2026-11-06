@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import {
   confirmInstructionsController,
-  createOrderController,
   getFeatureDataController,
   recordCriticalNotificationController,
   recordDeliveryController,
@@ -11,7 +10,6 @@ import {
 const router = Router();
 
 router.get('/feature-data', getFeatureDataController);
-router.post('/orders', createOrderController);
 router.post('/orders/:orderId/confirmation', confirmInstructionsController);
 router.post('/orders/:orderId/deliveries', recordDeliveryController);
 router.post('/results/:resultId/notification', recordCriticalNotificationController);

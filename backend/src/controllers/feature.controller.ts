@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { getFeatureData } from '../services/featureData.service';
-import { confirmOrderInstructions, createOrder, recordInstructionDelivery } from '../services/orders.service';
+import { confirmOrderInstructions, recordInstructionDelivery } from '../services/orders.service';
 import { recordCriticalNotification, saveResult } from '../services/results.service';
 
 function statusCode(error: unknown) {
@@ -20,15 +20,6 @@ export async function getFeatureDataController(_req: Request, res: Response) {
     return res.json(tenant);
   } catch (error) {
     return res.status(500).json({ error: errorMessage(error) });
-  }
-}
-
-export async function createOrderController(req: Request, res: Response) {
-  try {
-    const order = await createOrder(req.body.testIds ?? [], req.body.physicianId ?? null);
-    return res.status(201).json(order);
-  } catch (error) {
-    return res.status(statusCode(error)).json({ error: errorMessage(error) });
   }
 }
 

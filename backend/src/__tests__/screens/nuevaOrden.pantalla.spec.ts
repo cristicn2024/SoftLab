@@ -1,23 +1,24 @@
-import { after, before, describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import orderCaptureRoutes from '../../routes/orderCapture.routes';
 import { prisma } from '../../config/db';
-import { buildApp, closeDatabase, createScreenFixture, headers, type ScreenFixture } from './support';
+import { closeDatabase, createScreenFixture, headers, type ScreenFixture } from './support';
+import { construirAppNest } from './support-nest';
+
+jest.setTimeout(30000);
 
 // Pantalla "Recepción / Nueva orden" (HU-07 · HU 5.1)
 // GET /concepts/search · GET /orders/check-open · POST /doctors/express · POST /orders
 
-const app = buildApp(orderCaptureRoutes);
-
 describe('Pantalla de nueva orden', () => {
+  let app: INestApplication;
   let fixture: ScreenFixture;
   let testId = 0;
   let profileId = 0;
   let openPatientId = 0;
   let cleanPatientId = 0;
 
-  before(async () => {
+  beforeAll(async () => {
+    app = await construirAppNest();
     fixture = await createScreenFixture('orden');
 
     const test = await prisma.testCatalog.create({
@@ -77,104 +78,105 @@ describe('Pantalla de nueva orden', () => {
     cleanPatientId = cleanPatient.id;
   });
 
-  after(async () => {
+  afterAll(async () => {
+    await app.close();
     await fixture.cleanup();
     await closeDatabase();
   });
 
   it('no consulta la base cuando la búsqueda viene vacía', async () => {
-    const res = await request(app).get('/api/concepts/search?q=   ').set(headers(fixture.tenantId));
-    assert.equal(res.status, 200);
-    assert.deepEqual(res.body, []);
+    const res = await request(app.getHttpServer()).get('/api/concepts/search?q=   ').set(headers(fixture.tenantId));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
   });
 
   it('busca estudios y perfiles activos por clave o nombre', async () => {
-    const res = await request(app).get('/api/concepts/search?q=QA').set(headers(fixture.tenantId));
+    const res = await request(app.getHttpServer()).get('/api/concepts/search?q=QA').set(headers(fixture.tenantId));
 
-    assert.equal(res.status, 200);
+    expect(res.status).toBe(200);
     const test = res.body.find((item: { type: string }) => item.type === 'TEST');
     const profile = res.body.find((item: { type: string }) => item.type === 'PROFILE');
 
-    assert.ok(test);
-    assert.equal(test.id, testId);
-    assert.equal(test.code, 'BH-QA');
-    assert.equal(test.price, 150);
-    assert.deepEqual(test.includedTestIds, [testId]);
+    expect(test).toBeTruthy();
+    expect(test.id).toBe(testId);
+    expect(test.code).toBe('BH-QA');
+    expect(test.price).toBe(150);
+    expect(test.includedTestIds).toEqual([testId]);
 
-    assert.ok(profile);
-    assert.equal(profile.id, profileId);
-    assert.equal(profile.code, 'PERF-QA');
-    assert.equal(profile.price, 300);
-    assert.deepEqual(profile.includedTestIds, [testId]);
+    expect(profile).toBeTruthy();
+    expect(profile.id).toBe(profileId);
+    expect(profile.code).toBe('PERF-QA');
+    expect(profile.price).toBe(300);
+    expect(profile.includedTestIds).toEqual([testId]);
 
     const inactive = res.body.find((item: { code: string }) => item.code === 'INACT-QA');
-    assert.equal(inactive, undefined);
+    expect(inactive).toBe(undefined);
   });
 
   it('no mezcla conceptos de otro laboratorio', async () => {
-    const res = await request(app).get('/api/concepts/search?q=QA').set(headers(fixture.tenantId + 999999));
-    assert.equal(res.status, 200);
-    assert.deepEqual(res.body, []);
+    const res = await request(app.getHttpServer()).get('/api/concepts/search?q=QA').set(headers(fixture.tenantId + 999999));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
   });
 
   it('avisa si el paciente ya tiene una orden pendiente hoy', async () => {
-    const clean = await request(app)
+    const clean = await request(app.getHttpServer())
       .get(`/api/orders/check-open?patientId=${cleanPatientId}`)
       .set(headers(fixture.tenantId));
-    assert.equal(clean.status, 200);
-    assert.deepEqual(clean.body, { hasOpenOrder: false, orderId: null });
+    expect(clean.status).toBe(200);
+    expect(clean.body).toEqual({ hasOpenOrder: false, orderId: null });
 
-    const invalid = await request(app)
+    const invalid = await request(app.getHttpServer())
       .get('/api/orders/check-open?patientId=abc')
       .set(headers(fixture.tenantId));
-    assert.equal(invalid.status, 200);
-    assert.deepEqual(invalid.body, { hasOpenOrder: false, orderId: null });
+    expect(invalid.status).toBe(200);
+    expect(invalid.body).toEqual({ hasOpenOrder: false, orderId: null });
 
     const openOrder = await fixture.createOrder({ patientId: openPatientId, totalAmount: 10 });
 
-    const open = await request(app)
+    const open = await request(app.getHttpServer())
       .get(`/api/orders/check-open?patientId=${openPatientId}`)
       .set(headers(fixture.tenantId));
-    assert.equal(open.status, 200);
-    assert.equal(open.body.hasOpenOrder, true);
-    assert.equal(open.body.orderId, openOrder.id);
+    expect(open.status).toBe(200);
+    expect(open.body.hasOpenOrder).toBe(true);
+    expect(open.body.orderId).toBe(openOrder.id);
 
     await prisma.order.update({ where: { id: openOrder.id }, data: { status: 'completed' } });
 
-    const completed = await request(app)
+    const completed = await request(app.getHttpServer())
       .get(`/api/orders/check-open?patientId=${openPatientId}`)
       .set(headers(fixture.tenantId));
-    assert.equal(completed.body.hasOpenOrder, false);
+    expect(completed.body.hasOpenOrder).toBe(false);
   });
 
   it('registra un médico solicitante sin salir de la orden', async () => {
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .post('/api/doctors/express')
       .set(headers(fixture.tenantId))
       .send({ name: 'Dr. Roberto Salas QA', cedula: '12345678', specialty: 'Medicina General' });
 
-    assert.equal(res.status, 201);
-    assert.ok(res.body.id > 0);
-    assert.equal(res.body.name, 'Dr. Roberto Salas QA');
-    assert.equal(res.body.cedula, '12345678');
-    assert.equal(res.body.specialty, 'Medicina General');
-    assert.equal(res.body.tenantId, fixture.tenantId);
+    expect(res.status).toBe(201);
+    expect(res.body.id > 0).toBeTruthy();
+    expect(res.body.name).toBe('Dr. Roberto Salas QA');
+    expect(res.body.cedula).toBe('12345678');
+    expect(res.body.specialty).toBe('Medicina General');
+    expect(res.body.tenantId).toBe(fixture.tenantId);
   });
 
   it('exige paciente y sucursal al confirmar la orden', async () => {
-    const withoutPatient = await request(app)
+    const withoutPatient = await request(app.getHttpServer())
       .post('/api/orders')
       .set(headers(fixture.tenantId))
       .send({ branchId: fixture.branchId, items: [], totalAmount: 0 });
-    assert.equal(withoutPatient.status, 400);
-    assert.equal(withoutPatient.body.error, 'patientId es requerido');
+    expect(withoutPatient.status).toBe(422);
+    expect(withoutPatient.body.error.mensaje).toBe('patientId es requerido');
 
-    const withoutBranch = await request(app)
+    const withoutBranch = await request(app.getHttpServer())
       .post('/api/orders')
       .set(headers(fixture.tenantId))
       .send({ patientId: cleanPatientId, items: [], totalAmount: 0 });
-    assert.equal(withoutBranch.status, 400);
-    assert.equal(withoutBranch.body.error, 'branchId es requerido');
+    expect(withoutBranch.status).toBe(422);
+    expect(withoutBranch.body.error.mensaje).toBe('branchId es requerido');
   });
 
   it('genera un folio único y guarda estudios y perfiles en la orden', async () => {
@@ -189,31 +191,31 @@ describe('Pantalla de nueva orden', () => {
       ],
     };
 
-    const first = await request(app).post('/api/orders').set(headers(fixture.tenantId)).send(payload);
-    assert.equal(first.status, 201);
-    assert.equal(first.body.success, true);
-    assert.match(first.body.folio, /^ORD-\d{8}-\d{4}$/);
+    const first = await request(app.getHttpServer()).post('/api/orders').set(headers(fixture.tenantId)).send(payload);
+    expect(first.status).toBe(201);
+    expect(first.body.success).toBe(true);
+    expect(first.body.folio).toMatch(/^ORD-\d{8}-\d{4}$/);
 
-    const second = await request(app).post('/api/orders').set(headers(fixture.tenantId)).send(payload);
-    assert.equal(second.status, 201);
-    assert.notEqual(second.body.folio, first.body.folio);
+    const second = await request(app.getHttpServer()).post('/api/orders').set(headers(fixture.tenantId)).send(payload);
+    expect(second.status).toBe(201);
+    expect(second.body.folio).not.toBe(first.body.folio);
 
     const stored = await prisma.order.findUniqueOrThrow({
       where: { id: first.body.orderId },
       include: { items: true },
     });
-    assert.equal(stored.tenantId, fixture.tenantId);
-    assert.equal(stored.branchId, fixture.branchId);
-    assert.equal(stored.patientId, cleanPatientId);
-    assert.equal(stored.status, 'pending');
-    assert.equal(Number(stored.totalAmount), 450);
-    assert.equal(stored.items.length, 2);
+    expect(stored.tenantId).toBe(fixture.tenantId);
+    expect(stored.branchId).toBe(fixture.branchId);
+    expect(stored.patientId).toBe(cleanPatientId);
+    expect(stored.status).toBe('pending');
+    expect(Number(stored.totalAmount)).toBe(450);
+    expect(stored.items.length).toBe(2);
 
     const testItem = stored.items.find(item => item.testId === testId);
     const profileItem = stored.items.find(item => item.profileId === profileId);
-    assert.ok(testItem);
-    assert.equal(Number(testItem.price), 150);
-    assert.ok(profileItem);
-    assert.equal(Number(profileItem.price), 300);
+    expect(testItem).toBeTruthy();
+    expect(Number(testItem?.price)).toBe(150);
+    expect(profileItem).toBeTruthy();
+    expect(Number(profileItem?.price)).toBe(300);
   });
 });

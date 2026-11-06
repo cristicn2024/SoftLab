@@ -1,18 +1,18 @@
+import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import express from 'express';
-import orderCaptureRoutes from '../routes/orderCapture.routes';
 import { prisma } from '../config/db';
+import { construirAppNest } from './screens/support-nest';
 
-const app = express();
-app.use(express.json());
-app.use('/api', orderCaptureRoutes);
+jest.setTimeout(30000);
 
 describe('HU-07 (HU 5.1): Captura de Orden de Estudios', () => {
+  let app: INestApplication;
   let tenantId: number;
   let branchId: number;
   let patientId: number;
 
   beforeAll(async () => {
+    app = await construirAppNest();
     // 1. Obtener o crear un Tenant válido
     let tenant = await prisma.tenant.findFirst();
     if (!tenant) {
@@ -49,7 +49,7 @@ describe('HU-07 (HU 5.1): Captura de Orden de Estudios', () => {
 
   describe('GET /api/concepts/search', () => {
     it('debe retornar resultados predictivos al buscar por clave o nombre', async () => {
-      const res = await request(app)
+      const res = await request(app.getHttpServer())
         .get('/api/concepts/search?q=BH')
         .set('x-tenant-id', String(tenantId));
 
@@ -60,7 +60,7 @@ describe('HU-07 (HU 5.1): Captura de Orden de Estudios', () => {
 
   describe('GET /api/orders/check-open', () => {
     it('debe responder si un paciente tiene una orden activa en el día', async () => {
-      const res = await request(app)
+      const res = await request(app.getHttpServer())
         .get(`/api/orders/check-open?patientId=${patientId}`)
         .set('x-tenant-id', String(tenantId));
 
@@ -78,7 +78,7 @@ describe('HU-07 (HU 5.1): Captura de Orden de Estudios', () => {
         specialty: 'Medicina General'
       };
 
-      const res = await request(app)
+      const res = await request(app.getHttpServer())
         .post('/api/doctors/express')
         .set('x-tenant-id', String(tenantId))
         .send(payload);
@@ -99,7 +99,7 @@ describe('HU-07 (HU 5.1): Captura de Orden de Estudios', () => {
         items: []
       };
 
-      const res = await request(app)
+      const res = await request(app.getHttpServer())
         .post('/api/orders')
         .set('x-tenant-id', String(tenantId))
         .send(orderPayload);
@@ -108,5 +108,9 @@ describe('HU-07 (HU 5.1): Captura de Orden de Estudios', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.folio).toMatch(/^ORD-\d{8}-\d{4}$/);
     });
+  });
+
+  afterAll(async () => {
+    await app.close();
   });
 });

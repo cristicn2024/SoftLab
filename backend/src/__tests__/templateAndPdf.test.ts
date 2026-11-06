@@ -15,20 +15,26 @@ jest.mock('puppeteer', () => ({
   },
 }));
 
+import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import express from 'express';
-import templateRoutes from '../routes/template.routes';
 import { generateReportPDF } from '../services/pdf.service';
+import { construirAppNest } from './screens/support-nest';
 
-const app = express();
-app.use(express.json());
-app.use('/api', templateRoutes);
+let app: INestApplication;
+
+beforeAll(async () => {
+  app = await construirAppNest();
+});
+
+afterAll(async () => {
+  await app.close();
+});
 
 describe('HU-06: Módulo de Plantillas e Informes PDF', () => {
 
   describe('GET /api/templates/active', () => {
     it('debe responder con la plantilla predeterminada y cabecera 200', async () => {
-      const res = await request(app)
+      const res = await request(app.getHttpServer())
         .get('/api/templates/active')
         .set('x-tenant-id', '1');
 
@@ -46,7 +52,7 @@ describe('HU-06: Módulo de Plantillas e Informes PDF', () => {
         chemistCedula: '99999999'
       };
 
-      const res = await request(app)
+      const res = await request(app.getHttpServer())
         .post('/api/templates')
         .set('x-tenant-id', '1')
         .send(payload);

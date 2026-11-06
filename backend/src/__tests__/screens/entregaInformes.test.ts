@@ -1,128 +1,14 @@
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
-import templateRoutes from '../../routes/template.routes';
 import reportRoutes from '../../routes/report.routes';
 import { prisma } from '../../config/db';
 import { buildApp, closeDatabase, createScreenFixture, headers, type ScreenFixture } from './support';
 
-// Pantalla "Plantillas de informe" (HU-06)
-// GET /templates/active · POST /templates · GET /templates
 // Pantalla "Entrega de resultados" (HU-06)
 // GET|POST /reports/orders/:orderId/pdf · GET /verify-report/:token
 
-const app = buildApp(templateRoutes, reportRoutes);
-
-describe('Pantalla de plantillas de informe', () => {
-  let fixture: ScreenFixture;
-  let firstTemplateId = 0;
-
-  const templateBody = (suffix: string) => ({
-    headerText: `Encabezado ${suffix} · Laboratorio QA`,
-    disclaimer: `Aviso legal ${suffix}`,
-    chemistName: `Q.F.B. ${suffix}`,
-    chemistCedula: `CED-${suffix}`,
-  });
-
-  before(async () => {
-    fixture = await createScreenFixture('plantillas');
-  });
-
-  after(async () => {
-    await fixture.cleanup();
-    await closeDatabase();
-  });
-
-  it('usa la plantilla de respaldo cuando el laboratorio no tiene una configurada', async () => {
-    const res = await request(app).get('/api/templates/active').set(headers(fixture.tenantId));
-
-    assert.equal(res.status, 200);
-    assert.equal(res.body.version, 3);
-    assert.equal(res.body.name, 'Biometría hemática · Clínica Central · v3 · Publicada');
-    assert.equal(res.body.headerText, 'Logotipo · Laboratorio Santa Lucía · Clínica Central');
-    assert.equal(res.body.chemistName, 'Laura Méndez');
-    assert.equal(res.body.chemistCedula, '10458392');
-  });
-
-  it('guarda la primera versión y la marca como predeterminada', async () => {
-    const res = await request(app)
-      .post('/api/templates')
-      .set(headers(fixture.tenantId))
-      .send(templateBody('Primera'));
-
-    assert.equal(res.status, 201);
-    assert.equal(res.body.tenantId, fixture.tenantId);
-    assert.equal(res.body.version, 1);
-    assert.equal(res.body.name, 'Biometría hemática · v1');
-    assert.equal(res.body.isDefault, true);
-    assert.equal(res.body.headerText, 'Encabezado Primera · Laboratorio QA');
-    assert.equal(res.body.disclaimer, 'Aviso legal Primera');
-    assert.equal(res.body.chemistName, 'Q.F.B. Primera');
-    assert.equal(res.body.chemistCedula, 'CED-Primera');
-    assert.equal(res.body.primaryColor, '#0f766e');
-
-    firstTemplateId = res.body.id;
-  });
-
-  it('crea una nueva versión y desmarca la anterior', async () => {
-    const res = await request(app)
-      .post('/api/templates')
-      .set(headers(fixture.tenantId))
-      .send(templateBody('Segunda'));
-
-    assert.equal(res.status, 201);
-    assert.equal(res.body.version, 2);
-    assert.equal(res.body.name, 'Biometría hemática · v2');
-    assert.equal(res.body.isDefault, true);
-
-    const previous = await prisma.reportTemplate.findUniqueOrThrow({ where: { id: firstTemplateId } });
-    assert.equal(previous.isDefault, false);
-    assert.equal(previous.version, 1);
-  });
-
-  it('publica como vigente solo la última versión predeterminada', async () => {
-    const res = await request(app).get('/api/templates/active').set(headers(fixture.tenantId));
-
-    assert.equal(res.status, 200);
-    assert.equal(res.body.version, 2);
-    assert.equal(res.body.name, 'Biometría hemática · v2');
-    assert.equal(res.body.headerText, 'Encabezado Segunda · Laboratorio QA');
-    assert.equal(res.body.isDefault, true);
-
-    const defaults = await prisma.reportTemplate.count({
-      where: { tenantId: fixture.tenantId, isDefault: true },
-    });
-    assert.equal(defaults, 1);
-  });
-
-  it('entrega el historial de versiones de la más reciente a la más antigua', async () => {
-    const res = await request(app).get('/api/templates').set(headers(fixture.tenantId));
-
-    assert.equal(res.status, 200);
-    assert.equal(res.body.length, 2);
-    assert.deepEqual(
-      res.body.map((template: { version: number }) => template.version),
-      [2, 1],
-    );
-    assert.deepEqual(
-      res.body.map((template: { isDefault: boolean }) => template.isDefault),
-      [true, false],
-    );
-  });
-
-  it('aísla las plantillas por laboratorio', async () => {
-    const otherTenant = fixture.tenantId + 999999;
-
-    const active = await request(app).get('/api/templates/active').set(headers(otherTenant));
-    assert.equal(active.status, 200);
-    assert.equal(active.body.version, 3);
-    assert.equal(active.body.name, 'Biometría hemática · Clínica Central · v3 · Publicada');
-
-    const history = await request(app).get('/api/templates').set(headers(otherTenant));
-    assert.equal(history.status, 200);
-    assert.deepEqual(history.body, []);
-  });
-});
+const app = buildApp(reportRoutes);
 
 describe('Pantalla de entrega de informes PDF', () => {
   let fixture: ScreenFixture;

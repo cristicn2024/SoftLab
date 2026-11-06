@@ -338,6 +338,139 @@ describe('Pantalla de corte de caja', () => {
     assert.equal(cut.closedBy.id, fixture.cashier.id);
   });
 
+  it('opera el corte completo sin usuarios registrados', async () => {
+    const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    const tenant = await prisma.tenant.create({
+      data: {
+        name: 'Laboratorio sin usuarios',
+        subdomain: `qa-sin-usuarios-${suffix}`.slice(0, 50),
+      },
+    });
+
+    try {
+      const branch = await prisma.branch.create({
+        data: { tenantId: tenant.id, name: 'Sucursal sin usuarios' },
+      });
+      const patient = await prisma.patient.create({
+        data: {
+          tenantId: tenant.id,
+          firstName: 'Paciente',
+          lastName: 'Sin usuario',
+          birthDate: new Date(1990, 0, 1),
+          gender: 'F',
+          patientCode: `P-${suffix}`,
+        },
+      });
+      const createdAt = new Date(2026, 0, 20, 9, 0, 0, 0);
+
+      await prisma.order.create({
+        data: {
+          tenantId: tenant.id,
+          branchId: branch.id,
+          patientId: patient.id,
+          cashierId: null,
+          totalAmount: 200,
+          paidAmount: 200,
+          status: 'completed',
+          folio: `QA-SIN-USUARIO-${suffix}`,
+          createdAt,
+          payments: {
+            create: [
+              {
+                tenantId: tenant.id,
+                branchId: branch.id,
+                cashierId: null,
+                method: 'cash',
+                amount: 200,
+                createdAt,
+              },
+            ],
+          },
+        },
+      });
+
+      const contexto = await request(app)
+        .get('/api/cash-cuts/context')
+        .set(headers(tenant.id));
+      assert.equal(contexto.status, 200);
+      assert.equal(contexto.body.currentUser, null);
+      assert.deepEqual(contexto.body.cashiers, []);
+
+      const query = new URLSearchParams({
+        branchId: String(branch.id),
+        cashierId: '0',
+        shift: 'matutino',
+        date: '2026-01-20',
+      }).toString();
+
+      const abierto = await request(app)
+        .get(`/api/cash-cuts/summary?${query}`)
+        .set(headers(tenant.id));
+      assert.equal(abierto.status, 200);
+      assert.equal(abierto.body.scope.cashierName, 'Sin asignar');
+      assert.equal(abierto.body.summary.cashTotal, 200);
+
+      const cierre = await request(app)
+        .post('/api/cash-cuts/close')
+        .set(headers(tenant.id))
+        .send({
+          branchId: branch.id,
+          cashierId: 0,
+          shift: 'matutino',
+          date: '2026-01-20',
+          countedCash: 200,
+        });
+      assert.equal(cierre.status, 201);
+      assert.equal(cierre.body.cashier, 'Sin asignar');
+
+      const repetido = await request(app)
+        .post('/api/cash-cuts/close')
+        .set(headers(tenant.id))
+        .send({
+          branchId: branch.id,
+          cashierId: 0,
+          shift: 'matutino',
+          date: '2026-01-20',
+          countedCash: 200,
+        });
+      assert.equal(repetido.status, 409);
+
+      const guardado = await prisma.cashCut.findUnique({ where: { id: cierre.body.cutId } });
+      assert.ok(guardado?.cashierId && guardado.cashierId > 0);
+      assert.equal(guardado?.closedById, null);
+      const tecnico = await prisma.user.findUnique({ where: { id: guardado?.cashierId } });
+      assert.equal(tecnico?.fullName, 'Sin asignar');
+      assert.match(tecnico?.email ?? '', /@sistema\.local$/);
+
+      const cerrado = await request(app)
+        .get(`/api/cash-cuts/summary?${query}`)
+        .set(headers(tenant.id));
+      assert.equal(cerrado.status, 200);
+      assert.equal(cerrado.body.status, 'closed');
+      assert.equal(cerrado.body.summary.cashTotal, 200);
+
+      const historial = await request(app)
+        .get('/api/cash-cuts')
+        .set(headers(tenant.id));
+      assert.equal(historial.status, 200);
+      assert.equal(historial.body[0].cashier.fullName, 'Sin asignar');
+      assert.equal(historial.body[0].closedBy, null);
+
+      const exportado = await request(app)
+        .get(`/api/cash-cuts/${cierre.body.cutId}/export`)
+        .set(headers(tenant.id));
+      assert.equal(exportado.status, 200);
+      assert.match(exportado.text, /Sin asignar/);
+    } finally {
+      await prisma.payment.deleteMany({ where: { tenantId: tenant.id } });
+      await prisma.cashCut.deleteMany({ where: { tenantId: tenant.id } });
+      await prisma.order.deleteMany({ where: { tenantId: tenant.id } });
+      await prisma.patient.deleteMany({ where: { tenantId: tenant.id } });
+      await prisma.branch.deleteMany({ where: { tenantId: tenant.id } });
+      await prisma.tenant.deleteMany({ where: { id: tenant.id } });
+    }
+  });
+
   it('exporta el corte en CSV y valida el identificador', async () => {
     const res = await request(app)
       .get(`/api/cash-cuts/${cutId}/export`)

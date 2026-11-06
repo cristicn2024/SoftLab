@@ -17,6 +17,38 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
   transfer: 'Transferencia'
 };
 
+// cash_cuts.cashier_id es obligatorio, así que "sin cajero" (cashierId 0 en la
+// API) se guarda con un usuario técnico por laboratorio. La UI sigue viendo
+// "Sin asignar" y la columna no necesita ser nullable.
+const UNASSIGNED_USER_NAME = 'Sin asignar';
+const UNASSIGNED_EMAIL_SUFFIX = '@sistema.local';
+
+function unassignedEmail(tenantId: number) {
+  return `sin-asignar-${tenantId}${UNASSIGNED_EMAIL_SUFFIX}`;
+}
+
+async function findUnassignedUser(tenantId: number) {
+  return prisma.user.findUnique({
+    where: { email: unassignedEmail(tenantId) },
+    select: { id: true, fullName: true, role: true }
+  });
+}
+
+async function ensureUnassignedUser(tenantId: number) {
+  return prisma.user.upsert({
+    where: { email: unassignedEmail(tenantId) },
+    update: {},
+    create: {
+      tenantId,
+      branchId: null,
+      fullName: UNASSIGNED_USER_NAME,
+      email: unassignedEmail(tenantId),
+      passwordHash: '!',
+      role: 'receptionist'
+    }
+  });
+}
+
 export type MovementMethod = 'cash' | 'card' | 'transfer' | 'mixed' | 'pending' | 'cancelled';
 
 export interface CashCutMovement {
@@ -151,7 +183,11 @@ export async function getCashCutContext(tenantId: number) {
     prisma.tenant.findUnique({ where: { id: tenantId } }),
     prisma.branch.findMany({ where: { tenantId }, orderBy: { name: 'asc' } }),
     prisma.user.findMany({
-      where: { tenantId, role: { in: ['admin', 'receptionist'] } },
+      where: {
+        tenantId,
+        role: { in: ['admin', 'receptionist'] },
+        email: { not: { endsWith: UNASSIGNED_EMAIL_SUFFIX } }
+      },
       orderBy: { fullName: 'asc' },
       select: { id: true, fullName: true, role: true, branchId: true }
     })
@@ -173,7 +209,7 @@ export async function getCashCutContext(tenantId: number) {
     users.find(u => u.role === 'receptionist') ??
     users[0] ??
     (await prisma.user.findFirst({
-      where: { tenantId },
+      where: { tenantId, email: { not: { endsWith: UNASSIGNED_EMAIL_SUFFIX } } },
       select: { id: true, fullName: true, role: true, branchId: true }
     }));
 
@@ -324,18 +360,22 @@ export async function getCashCutSummary(scope: ScopeInput) {
   const config = SHIFT_CATALOG[scope.shift];
   const { start, end } = resolvePeriod(scope.date, scope.shift);
 
-  const existingCut = scope.cashierId === 0 ? null : await prisma.cashCut.findUnique({
-    where: {
-      uq_cash_cut_scope: {
-        tenantId: scope.tenantId,
-        branchId: scope.branchId,
-        cashierId: scope.cashierId,
-        cutDate,
-        shift: scope.shift as CashCutShift
-      }
-    },
-    include: { closedBy: { select: { id: true, fullName: true } } }
-  });
+  const storageCashierId =
+    scope.cashierId === 0 ? (await findUnassignedUser(scope.tenantId))?.id ?? null : scope.cashierId;
+
+  const existingCut =
+    storageCashierId === null
+      ? null
+      : await prisma.cashCut.findFirst({
+          where: {
+            tenantId: scope.tenantId,
+            branchId: scope.branchId,
+            cashierId: storageCashierId,
+            cutDate,
+            shift: scope.shift as CashCutShift
+          },
+          include: { closedBy: { select: { id: true, fullName: true } } }
+        });
 
   const scopeInfo = {
     branchId: branch.id,
@@ -398,21 +438,22 @@ export async function getCashCutSummary(scope: ScopeInput) {
 
 export async function closeCashCut(
   scope: ScopeInput,
-  payload: { countedCash: number; observation?: string; closedById: number }
+  payload: { countedCash: number; observation?: string; closedById: number | null }
 ) {
-  const { branch, cashier } = await getScopeNames(scope);
+  const { branch, cashier } = await getScopeNames(scope, true);
   const cutDate = parseDateOnly(scope.date);
   const { start, end } = resolvePeriod(scope.date, scope.shift);
 
-  const existing = await prisma.cashCut.findUnique({
+  const realCashierId =
+    scope.cashierId === 0 ? (await ensureUnassignedUser(scope.tenantId)).id : scope.cashierId;
+
+  const existing = await prisma.cashCut.findFirst({
     where: {
-      uq_cash_cut_scope: {
-        tenantId: scope.tenantId,
-        branchId: scope.branchId,
-        cashierId: scope.cashierId,
-        cutDate,
-        shift: scope.shift as CashCutShift
-      }
+      tenantId: scope.tenantId,
+      branchId: scope.branchId,
+      cashierId: realCashierId,
+      cutDate,
+      shift: scope.shift as CashCutShift
     }
   });
 
@@ -459,7 +500,7 @@ export async function closeCashCut(
           data: {
             tenantId: scope.tenantId,
             branchId: scope.branchId,
-            cashierId: scope.cashierId,
+            cashierId: realCashierId,
             shift: scope.shift as CashCutShift,
             cutDate,
             periodStart: start,

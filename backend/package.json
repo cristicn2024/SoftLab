@@ -7,6 +7,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "tsx --test \"src/modules/**/*.test.ts\"",
+    "test:screens": "tsx --test --test-concurrency=1 \"src/__tests__/screens/**/*.test.ts\"",
+    "test:all": "npm test && npm run test:screens",
     "test:jest": "jest",
     "db:seed:cashcut": "tsx prisma/seed-cashcut.ts",
     "seed:hu-5-2-6-2": "tsx prisma/seeds/hu-5-2-6-2.ts",

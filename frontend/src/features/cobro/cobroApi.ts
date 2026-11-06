@@ -5,7 +5,7 @@ import { aCentavos, fechaHora } from './calculosCobro'
 import type { CobroOrden, MetodoPago } from './datosCobro'
 import type { EnvioCobro } from './FormularioCobro'
 
-// Llamadas al backend de la HU 5.3 (backend/src/routes/payment.routes.ts).
+// Llamadas al backend de la HU 5.3 (backend/src/modules/cobro/cobro.controller.ts).
 
 type MetodoApi = 'cash' | 'card' | 'transfer'
 
@@ -94,11 +94,13 @@ function aPantalla(datos: CobroApi): CobroOrden {
   }
 }
 
-// Convierte el error del backend ({ error: '...' }) en un mensaje para la pantalla.
+// Convierte el error del backend ({ error: '...' } o { error: { mensaje: '...' } }) en un mensaje para la pantalla.
 export function mensajeDeError(error: unknown): string {
   if (isAxiosError(error)) {
-    const respuesta = error.response?.data as { error?: string } | undefined
-    if (respuesta?.error) return respuesta.error
+    const respuesta = error.response?.data as { error?: string | { mensaje?: string } } | undefined
+    const detalle = respuesta?.error
+    if (typeof detalle === 'string' && detalle !== '') return detalle
+    if (detalle !== undefined && typeof detalle === 'object' && typeof detalle.mensaje === 'string') return detalle.mensaje
     if (error.response === undefined) return 'No se pudo conectar con el servidor. Revisa que el backend esté corriendo.'
   }
   return 'Ocurrió un error inesperado.'

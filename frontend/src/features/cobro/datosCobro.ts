@@ -65,7 +65,7 @@ export type CobroOrden = {
 }
 
 // Los servicios de análisis clínicos están exentos de IVA, por eso la tasa es 0.
-// Debe coincidir con TAX_RATE del backend (payment.controller.ts).
+// Debe coincidir con TAX_RATE del backend (cobro.rules.ts).
 export const TASA_IMPUESTO = 0
 
 export const PORCENTAJES_DESCUENTO = [0, 5, 10, 15, 20]

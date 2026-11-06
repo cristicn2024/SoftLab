@@ -1,0 +1,1 @@
+export const COBRO_REPOSITORY = 'COBRO_REPOSITORY';

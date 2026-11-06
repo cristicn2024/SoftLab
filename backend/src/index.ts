@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 import { prisma } from './config/db';
 import templateRoutes from './routes/template.routes';
 import orderCaptureRoutes from './routes/orderCapture.routes';
-import paymentRoutes from './routes/payment.routes';
 import reportRoutes from './routes/report.routes';
 import cashCutRoutes from './routes/cashCut.routes';
 import featureRoutes from './routes/feature.routes';
@@ -33,7 +32,6 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api', templateRoutes);
-app.use('/api', paymentRoutes);
 app.use('/api', reportRoutes);
 
 app.use('/api', cashCutRoutes);

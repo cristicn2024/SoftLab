@@ -5,7 +5,6 @@ import reportRoutes from '../routes/report.routes';
 import cashCutRoutes from '../routes/cashCut.routes';
 import orderCaptureRoutes from '../routes/orderCapture.routes';
 import featureRoutes from '../routes/feature.routes';
-import { buildWorklistRouter } from '../modules/worklist/worklist.module';
 import { errorHandler } from '../middleware/error-handler';
 
 export function montarLegacy(app: NestExpressApplication) {
@@ -15,6 +14,5 @@ export function montarLegacy(app: NestExpressApplication) {
   app.use('/api', cashCutRoutes);
   app.use('/api', orderCaptureRoutes);
   app.use('/api', featureRoutes);
-  app.use('/api/worklist', buildWorklistRouter());
   app.use(errorHandler);
 }

@@ -1,8 +1,16 @@
+import { Injectable } from '@nestjs/common';
 import type { Prisma, ReferenceRange, SampleStatus } from '@prisma/client';
-import { prisma } from '../../config/db';
-import { ResultAlreadyCapturedError } from './worklist.errors';
-import type { WorklistRepository } from './worklist.repository';
-import type { ItemRecord, OrderRecord, ParameterRecord, RangeRecord, SampleRecord, SaveEntry } from './worklist.types';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { ResultAlreadyCapturedError } from '../dominio/worklist.errors';
+import type { WorklistRepository } from '../dominio/worklist.repository';
+import type {
+  ItemRecord,
+  OrderRecord,
+  ParameterRecord,
+  RangeRecord,
+  SampleRecord,
+  SaveEntry,
+} from '../dominio/worklist.types';
 
 const READY_SAMPLE_STATUSES: SampleStatus[] = ['received'];
 
@@ -121,9 +129,12 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2002';
 }
 
-export class PrismaWorklistRepository implements WorklistRepository {
+@Injectable()
+export class WorklistPrismaRepository implements WorklistRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
   async findReadyOrders(tenantId: number): Promise<OrderRecord[]> {
-    const rows = await prisma.order.findMany({
+    const rows = await this.prisma.order.findMany({
       where: { tenantId, samples: { some: { status: { in: READY_SAMPLE_STATUSES } } } },
       orderBy: { createdAt: 'asc' },
       include: ORDER_INCLUDE,
@@ -137,7 +148,7 @@ export class PrismaWorklistRepository implements WorklistRepository {
   }
 
   async findReadyOrder(tenantId: number, orderId: number): Promise<OrderRecord | null> {
-    const row = await prisma.order.findFirst({
+    const row = await this.prisma.order.findFirst({
       where: { id: orderId, tenantId, samples: { some: { status: { in: READY_SAMPLE_STATUSES } } } },
       include: ORDER_INCLUDE,
     });
@@ -152,7 +163,7 @@ export class PrismaWorklistRepository implements WorklistRepository {
     const operations: Prisma.PrismaPromise<unknown>[] = [];
     for (const entry of entries) {
       operations.push(
-        prisma.testResult.create({
+        this.prisma.testResult.create({
           data: {
             tenantId,
             orderItemId: entry.orderItemId,
@@ -166,7 +177,7 @@ export class PrismaWorklistRepository implements WorklistRepository {
     }
 
     try {
-      await prisma.$transaction(operations);
+      await this.prisma.$transaction(operations);
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw new ResultAlreadyCapturedError();

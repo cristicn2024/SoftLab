@@ -23,11 +23,14 @@ export class SesionPorEncabezadosGuard implements CanActivate {
       throw new BadRequestException('Falta el encabezado x-tenant-id con el id del laboratorio.');
     }
 
+    const usuarioId = Number(leerEncabezado(req.headers['x-user-id']));
+
     req.user = {
       tenantId,
       nombre: leerEncabezado(req.headers['x-user-name']) || 'Usuario sin nombre',
       rol: rolDesdeEncabezado(leerEncabezado(req.headers['x-user-role'])),
     };
+    if (Number.isSafeInteger(usuarioId) && usuarioId > 0) req.user.usuarioId = usuarioId;
     return true;
   }
 }

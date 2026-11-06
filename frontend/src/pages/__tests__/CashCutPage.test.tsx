@@ -278,4 +278,29 @@ describe('Pantalla de corte de caja (frontend)', () => {
       await screen.findByText(/No se pudo cargar el contexto: sin conexión/),
     ).toBeInTheDocument();
   });
+
+  it('lee el mensaje del formato de error nuevo del servidor', async () => {
+    (api.get as any).mockRejectedValue({
+      message: 'Request failed with status code 404',
+      response: { data: { error: { statusCode: 404, tipo: 'NoEncontradoError', mensaje: 'Sucursal no encontrada' } } },
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/No se pudo cargar el contexto: Sucursal no encontrada/),
+    ).toBeInTheDocument();
+  });
+
+  it('muestra el primer mensaje cuando el servidor devuelve una lista', async () => {
+    (api.get as any).mockRejectedValue({
+      response: { data: { error: { statusCode: 400, mensaje: ['Turno inválido', 'branchId debe ser un entero'] } } },
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/No se pudo cargar el contexto: Turno inválido/),
+    ).toBeInTheDocument();
+  });
 });

@@ -111,14 +111,17 @@ const formatDateLong = (value: string) => {
 
 function apiErrorMessage(error: unknown) {
   const err = error as {
-    response?: { data?: { error?: string; details?: { messages?: string[] }[] } };
+    response?: { data?: { error?: string | { mensaje?: string | string[] } } };
     message?: string;
   };
-  const details = err.response?.data?.details;
-  if (details?.length && details[0].messages?.length) {
-    return details[0].messages[0];
+  const apiError = err.response?.data?.error;
+  if (apiError && typeof apiError === 'object') {
+    const mensaje = apiError.mensaje;
+    if (Array.isArray(mensaje) && mensaje.length > 0) return mensaje[0];
+    if (typeof mensaje === 'string' && mensaje) return mensaje;
   }
-  return err.response?.data?.error ?? err.message ?? 'Ocurrió un error inesperado';
+  if (typeof apiError === 'string' && apiError) return apiError;
+  return err.message ?? 'Ocurrió un error inesperado';
 }
 
 const METHOD_THEME: Record<

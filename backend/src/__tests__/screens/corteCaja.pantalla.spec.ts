@@ -1,8 +1,5 @@
-import 'reflect-metadata';
-import { after, before, describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import cashCutRoutes from '../../routes/cashCut.routes';
 import { prisma } from '../../config/db';
 import {
   formatLocalDate,
@@ -10,49 +7,50 @@ import {
   resolvePeriod,
   round2,
   shiftForHour,
-} from '../../services/cashCut.service';
-import { buildApp, closeDatabase, createScreenFixture, headers, type ScreenFixture } from './support';
+} from '../../modules/corte-caja/dominio/corte-caja.rules';
+import { closeDatabase, createScreenFixture, headers, type ScreenFixture } from './support';
+import { construirAppNest } from './support-nest';
+
+jest.setTimeout(30000);
 
 // Pantalla "Corte de caja" (HU 5.4)
 // GET /cash-cuts/context · GET /cash-cuts/summary · POST /cash-cuts/close
 // GET /cash-cuts · GET /cash-cuts/:id/export
 
-const app = buildApp(cashCutRoutes);
-
 describe('Reglas de turno del corte de caja', () => {
   it('asigna el turno según la hora del día', () => {
-    assert.equal(shiftForHour(7), 'nocturno');
-    assert.equal(shiftForHour(8), 'matutino');
-    assert.equal(shiftForHour(14), 'matutino');
-    assert.equal(shiftForHour(15), 'vespertino');
-    assert.equal(shiftForHour(21), 'vespertino');
-    assert.equal(shiftForHour(22), 'nocturno');
-    assert.equal(shiftForHour(0), 'nocturno');
+    expect(shiftForHour(7)).toBe('nocturno');
+    expect(shiftForHour(8)).toBe('matutino');
+    expect(shiftForHour(14)).toBe('matutino');
+    expect(shiftForHour(15)).toBe('vespertino');
+    expect(shiftForHour(21)).toBe('vespertino');
+    expect(shiftForHour(22)).toBe('nocturno');
+    expect(shiftForHour(0)).toBe('nocturno');
   });
 
   it('el turno nocturno termina al día siguiente', () => {
     const { start, end } = resolvePeriod('2026-01-15', 'nocturno');
-    assert.equal(start.getDate(), 15);
-    assert.equal(start.getHours(), 22);
-    assert.equal(end.getDate(), 16);
-    assert.equal(end.getHours(), 8);
+    expect(start.getDate()).toBe(15);
+    expect(start.getHours()).toBe(22);
+    expect(end.getDate()).toBe(16);
+    expect(end.getHours()).toBe(8);
   });
 
   it('valida fechas reales y rechaza días inexistentes', () => {
-    assert.equal(formatLocalDate(new Date(2024, 1, 29)), '2024-02-29');
+    expect(formatLocalDate(new Date(2024, 1, 29))).toBe('2024-02-29');
     const parsed = parseDateOnly('2024-02-29');
-    assert.equal(parsed.getUTCFullYear(), 2024);
-    assert.equal(parsed.getUTCMonth(), 1);
-    assert.equal(parsed.getUTCDate(), 29);
-    assert.throws(() => parseDateOnly('2026-02-30'), /Fecha inválida/);
-    assert.throws(() => parseDateOnly('2026-13-01'), /Fecha inválida/);
-    assert.throws(() => parseDateOnly('sin-fecha'), /Fecha inválida/);
+    expect(parsed.getUTCFullYear()).toBe(2024);
+    expect(parsed.getUTCMonth()).toBe(1);
+    expect(parsed.getUTCDate()).toBe(29);
+    expect(() => parseDateOnly('2026-02-30')).toThrow(/Fecha inválida/);
+    expect(() => parseDateOnly('2026-13-01')).toThrow(/Fecha inválida/);
+    expect(() => parseDateOnly('sin-fecha')).toThrow(/Fecha inválida/);
   });
 
   it('redondea a centavos', () => {
-    assert.equal(round2(1.005), 1.01);
-    assert.equal(round2(10.994), 10.99);
-    assert.equal(round2(0), 0);
+    expect(round2(1.005)).toBe(1.01);
+    expect(round2(10.994)).toBe(10.99);
+    expect(round2(0)).toBe(0);
   });
 });
 
@@ -60,6 +58,7 @@ describe('Pantalla de corte de caja', () => {
   const FECHA = '2026-01-15';
   const MATUTINO = { shift: 'matutino', date: FECHA };
 
+  let app: INestApplication;
   let fixture: ScreenFixture;
   let orderCash: Awaited<ReturnType<ScreenFixture['createOrder']>>;
   let orderMixed: Awaited<ReturnType<ScreenFixture['createOrder']>>;
@@ -87,7 +86,8 @@ describe('Pantalla de corte de caja', () => {
     ...extra,
   });
 
-  before(async () => {
+  beforeAll(async () => {
+    app = await construirAppNest();
     fixture = await createScreenFixture('corte');
     orderCash = await fixture.createOrder({
       createdAt: at(9),
@@ -123,8 +123,9 @@ describe('Pantalla de corte de caja', () => {
     });
   });
 
-  after(async () => {
+  afterAll(async () => {
     await fixture.cleanup();
+    await app.close();
     await closeDatabase();
   });
 
@@ -136,58 +137,56 @@ describe('Pantalla de corte de caja', () => {
       payments: [{ method: 'cash', amount: 1 }],
     });
 
-    const res = await request(app).get('/api/cash-cuts/context').set(headers(fixture.tenantId));
+    const res = await request(app.getHttpServer()).get('/api/cash-cuts/context').set(headers(fixture.tenantId));
 
-    assert.equal(res.status, 200);
-    assert.equal(res.body.tenant.id, fixture.tenantId);
-    assert.equal(res.body.currentUser.id, fixture.admin.id);
-    assert.equal(res.body.currentUser.role, 'admin');
-    assert.ok(res.body.branches.some((branch: { id: number }) => branch.id === fixture.branchId));
-    assert.equal(res.body.cashiers.length, 2);
-    assert.deepEqual(
-      res.body.shifts.map((shift: { value: string }) => shift.value),
-      ['matutino', 'vespertino', 'nocturno'],
-    );
-    assert.match(res.body.today, /^\d{4}-\d{2}-\d{2}$/);
+    expect(res.status).toBe(200);
+    expect(res.body.tenant.id).toBe(fixture.tenantId);
+    expect(res.body.currentUser.id).toBe(fixture.admin.id);
+    expect(res.body.currentUser.role).toBe('admin');
+    expect(res.body.branches.some((branch: { id: number }) => branch.id === fixture.branchId)).toBeTruthy();
+    expect(res.body.cashiers.length).toBe(2);
+    expect(res.body.shifts.map((shift: { value: string }) => shift.value)).toEqual(['matutino', 'vespertino', 'nocturno']);
+    expect(res.body.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('rechaza parámetros inválidos del resumen', async () => {
-    const missing = await request(app).get('/api/cash-cuts/summary').set(headers(fixture.tenantId));
-    assert.equal(missing.status, 400);
-    assert.equal(missing.body.error, 'Parámetros inválidos');
+    const missing = await request(app.getHttpServer()).get('/api/cash-cuts/summary').set(headers(fixture.tenantId));
+    expect(missing.status).toBe(400);
+    expect(missing.body.error.mensaje).toContain('branchId debe ser un entero');
+    expect(missing.body.error.mensaje).toContain('Turno inválido');
 
-    const invalidShift = await request(app)
+    const invalidShift = await request(app.getHttpServer())
       .get(`/api/cash-cuts/summary?${scopeQuery({ shift: 'tarde' })}`)
       .set(headers(fixture.tenantId));
-    assert.equal(invalidShift.status, 400);
-    assert.equal(invalidShift.body.error, 'Parámetros inválidos');
+    expect(invalidShift.status).toBe(400);
+    expect(invalidShift.body.error.mensaje).toContain('Turno inválido');
 
-    const invalidDate = await request(app)
+    const invalidDate = await request(app.getHttpServer())
       .get(`/api/cash-cuts/summary?${scopeQuery({ date: '2026-02-30' })}`)
       .set(headers(fixture.tenantId));
-    assert.equal(invalidDate.status, 400);
-    assert.equal(invalidDate.body.error, 'Fecha inválida');
+    expect(invalidDate.status).toBe(422);
+    expect(invalidDate.body.error.mensaje).toBe('Fecha inválida');
 
-    const unknownBranch = await request(app)
+    const unknownBranch = await request(app.getHttpServer())
       .get(`/api/cash-cuts/summary?${scopeQuery({ branchId: '999999999' })}`)
       .set(headers(fixture.tenantId));
-    assert.equal(unknownBranch.status, 404);
-    assert.equal(unknownBranch.body.error, 'Sucursal no encontrada');
+    expect(unknownBranch.status).toBe(404);
+    expect(unknownBranch.body.error.mensaje).toBe('Sucursal no encontrada');
   });
 
   it('calcula los acumulados del turno y clasifica los movimientos', async () => {
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .get(`/api/cash-cuts/summary?${scopeQuery()}`)
       .set(headers(fixture.tenantId));
 
-    assert.equal(res.status, 200);
-    assert.equal(res.body.status, 'open');
-    assert.equal(res.body.scope.branchName, 'Sucursal corte');
-    assert.equal(res.body.scope.cashierName, 'Cajero corte');
-    assert.equal(res.body.scope.shiftLabel, 'Matutino');
-    assert.equal(res.body.scope.schedule, '08:00 – 15:00');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('open');
+    expect(res.body.scope.branchName).toBe('Sucursal corte');
+    expect(res.body.scope.cashierName).toBe('Cajero corte');
+    expect(res.body.scope.shiftLabel).toBe('Matutino');
+    expect(res.body.scope.schedule).toBe('08:00 – 15:00');
 
-    assert.deepEqual(res.body.summary, {
+    expect(res.body.summary).toEqual({
       cashTotal: 300,
       cardTotal: 50,
       transferTotal: 75,
@@ -198,24 +197,24 @@ describe('Pantalla de corte de caja', () => {
       expectedCash: 300,
     });
 
-    assert.equal(res.body.movements.length, 5);
+    expect(res.body.movements.length).toBe(5);
     const byId = new Map<number, { method: string; methodLabel: string; amount: number }>(
       res.body.movements.map((movement: { id: number; method: string; methodLabel: string; amount: number }) => [
         movement.id,
         movement,
       ]),
     );
-    assert.equal(byId.get(orderCash.id)?.methodLabel, 'Efectivo');
-    assert.equal(byId.get(orderMixed.id)?.methodLabel, 'Efectivo + tarjeta');
-    assert.equal(byId.get(orderTransfer.id)?.methodLabel, 'Transferencia');
-    assert.equal(byId.get(orderCancelled.id)?.methodLabel, 'Cancelado');
-    assert.equal(byId.get(orderPending.id)?.methodLabel, 'Pendiente');
-    assert.equal(byId.has(orderOutside.id), false);
-    assert.equal(byId.has(orderOtherCashier.id), false);
+    expect(byId.get(orderCash.id)?.methodLabel).toBe('Efectivo');
+    expect(byId.get(orderMixed.id)?.methodLabel).toBe('Efectivo + tarjeta');
+    expect(byId.get(orderTransfer.id)?.methodLabel).toBe('Transferencia');
+    expect(byId.get(orderCancelled.id)?.methodLabel).toBe('Cancelado');
+    expect(byId.get(orderPending.id)?.methodLabel).toBe('Pendiente');
+    expect(byId.has(orderOutside.id)).toBe(false);
+    expect(byId.has(orderOtherCashier.id)).toBe(false);
   });
 
   it('aísla el corte por laboratorio, sucursal y cajero', async () => {
-    const otherCashier = await request(app)
+    const otherCashier = await request(app.getHttpServer())
       .get(
         `/api/cash-cuts/summary?${scopeQuery({
           cashierId: String(fixture.admin.id),
@@ -223,74 +222,71 @@ describe('Pantalla de corte de caja', () => {
       )
       .set(headers(fixture.tenantId));
 
-    assert.equal(otherCashier.status, 200);
-    assert.equal(otherCashier.body.summary.ordersCount, 1);
-    assert.equal(otherCashier.body.summary.cashTotal, 999);
+    expect(otherCashier.status).toBe(200);
+    expect(otherCashier.body.summary.ordersCount).toBe(1);
+    expect(otherCashier.body.summary.cashTotal).toBe(999);
 
-    const otherTenant = await request(app)
+    const otherTenant = await request(app.getHttpServer())
       .get(`/api/cash-cuts/summary?${scopeQuery()}`)
       .set(headers(fixture.tenantId + 999999));
 
-    assert.equal(otherTenant.status, 404);
-    assert.equal(otherTenant.body.error, 'Sucursal no encontrada');
+    expect(otherTenant.status).toBe(404);
+    expect(otherTenant.body.error.mensaje).toBe('Sucursal no encontrada');
   });
 
   it('exige observación cuando el efectivo contado tiene diferencia', async () => {
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .post('/api/cash-cuts/close')
       .set(headers(fixture.tenantId))
       .send(closeBody({ countedCash: 290 }));
 
-    assert.equal(res.status, 400);
-    assert.equal(
-      res.body.error,
-      'La observación es obligatoria cuando el efectivo contado presenta una diferencia',
-    );
+    expect(res.status).toBe(422);
+    expect(res.body.error.mensaje).toBe('La observación es obligatoria cuando el efectivo contado presenta una diferencia');
   });
 
   it('valida el efectivo contado y la observación', async () => {
-    const negative = await request(app)
+    const negative = await request(app.getHttpServer())
       .post('/api/cash-cuts/close')
       .set(headers(fixture.tenantId))
       .send(closeBody({ countedCash: -1 }));
 
-    assert.equal(negative.status, 400);
-    assert.equal(negative.body.error, 'Datos inválidos');
+    expect(negative.status).toBe(400);
+    expect(negative.body.error.mensaje).toContain('El efectivo contado no puede ser negativo');
 
-    const longObservation = await request(app)
+    const longObservation = await request(app.getHttpServer())
       .post('/api/cash-cuts/close')
       .set(headers(fixture.tenantId))
       .send(closeBody({ countedCash: 300, observation: 'a'.repeat(501) }));
 
-    assert.equal(longObservation.status, 400);
-    assert.equal(longObservation.body.error, 'Datos inválidos');
+    expect(longObservation.status).toBe(400);
+    expect(longObservation.body.error.mensaje).toContain('La observación no puede exceder 500 caracteres');
   });
 
   it('cierra el corte, congela el resumen y liga los pagos al corte', async () => {
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .post('/api/cash-cuts/close')
       .set(headers(fixture.tenantId))
       .send(closeBody({ countedCash: 290, observation: 'Faltante de cambio' }));
 
-    assert.equal(res.status, 201);
-    assert.equal(res.body.status, 'closed');
-    assert.equal(res.body.countedCash, 290);
-    assert.equal(res.body.difference, -10);
-    assert.equal(res.body.observation, 'Faltante de cambio');
-    assert.equal(res.body.summary.cashTotal, 300);
-    assert.equal(res.body.summary.expectedCash, 300);
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe('closed');
+    expect(res.body.countedCash).toBe(290);
+    expect(res.body.difference).toBe(-10);
+    expect(res.body.observation).toBe('Faltante de cambio');
+    expect(res.body.summary.cashTotal).toBe(300);
+    expect(res.body.summary.expectedCash).toBe(300);
 
     cutId = res.body.cutId;
     const linkedPayments = await prisma.payment.count({ where: { cashCutId: cutId } });
-    assert.equal(linkedPayments, 4);
+    expect(linkedPayments).toBe(4);
 
-    const repeated = await request(app)
+    const repeated = await request(app.getHttpServer())
       .post('/api/cash-cuts/close')
       .set(headers(fixture.tenantId))
       .send(closeBody({ countedCash: 290, observation: 'Otra vez' }));
 
-    assert.equal(repeated.status, 409);
-    assert.equal(repeated.body.error, 'El corte de caja ya está cerrado y no puede modificarse');
+    expect(repeated.status).toBe(409);
+    expect(repeated.body.error.mensaje).toBe('El corte de caja ya está cerrado y no puede modificarse');
   });
 
   it('mantiene el resumen congelado aunque entren movimientos después del cierre', async () => {
@@ -306,36 +302,36 @@ describe('Pantalla de corte de caja', () => {
       },
     });
 
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .get(`/api/cash-cuts/summary?${scopeQuery()}`)
       .set(headers(fixture.tenantId));
 
-    assert.equal(res.status, 200);
-    assert.equal(res.body.status, 'closed');
-    assert.equal(res.body.cutId, cutId);
-    assert.equal(res.body.countedCash, 290);
-    assert.equal(res.body.difference, -10);
-    assert.equal(res.body.observation, 'Faltante de cambio');
-    assert.equal(res.body.summary.cashTotal, 300);
-    assert.equal(res.body.summary.totalPaid, 425);
-    assert.equal(res.body.movements.length, 5);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('closed');
+    expect(res.body.cutId).toBe(cutId);
+    expect(res.body.countedCash).toBe(290);
+    expect(res.body.difference).toBe(-10);
+    expect(res.body.observation).toBe('Faltante de cambio');
+    expect(res.body.summary.cashTotal).toBe(300);
+    expect(res.body.summary.totalPaid).toBe(425);
+    expect(res.body.movements.length).toBe(5);
   });
 
   it('lista el historial de cortes cerrados', async () => {
-    const res = await request(app).get('/api/cash-cuts').set(headers(fixture.tenantId));
+    const res = await request(app.getHttpServer()).get('/api/cash-cuts').set(headers(fixture.tenantId));
 
-    assert.equal(res.status, 200);
+    expect(res.status).toBe(200);
     const cut = res.body.find((item: { id: number }) => item.id === cutId);
-    assert.ok(cut);
-    assert.equal(cut.branch.name, 'Sucursal corte');
-    assert.equal(cut.cashier.fullName, 'Cajero corte');
-    assert.equal(cut.shift, 'matutino');
-    assert.equal(cut.status, 'closed');
-    assert.equal(cut.expectedCash, 300);
-    assert.equal(cut.countedCash, 290);
-    assert.equal(cut.difference, -10);
-    assert.equal(cut.observation, 'Faltante de cambio');
-    assert.equal(cut.closedBy.id, fixture.cashier.id);
+    expect(cut).toBeTruthy();
+    expect(cut.branch.name).toBe('Sucursal corte');
+    expect(cut.cashier.fullName).toBe('Cajero corte');
+    expect(cut.shift).toBe('matutino');
+    expect(cut.status).toBe('closed');
+    expect(cut.expectedCash).toBe(300);
+    expect(cut.countedCash).toBe(290);
+    expect(cut.difference).toBe(-10);
+    expect(cut.observation).toBe('Faltante de cambio');
+    expect(cut.closedBy.id).toBe(fixture.cashier.id);
   });
 
   it('opera el corte completo sin usuarios registrados', async () => {
@@ -389,12 +385,12 @@ describe('Pantalla de corte de caja', () => {
         },
       });
 
-      const contexto = await request(app)
+      const contexto = await request(app.getHttpServer())
         .get('/api/cash-cuts/context')
         .set(headers(tenant.id));
-      assert.equal(contexto.status, 200);
-      assert.equal(contexto.body.currentUser, null);
-      assert.deepEqual(contexto.body.cashiers, []);
+      expect(contexto.status).toBe(200);
+      expect(contexto.body.currentUser).toBe(null);
+      expect(contexto.body.cashiers).toEqual([]);
 
       const query = new URLSearchParams({
         branchId: String(branch.id),
@@ -403,14 +399,14 @@ describe('Pantalla de corte de caja', () => {
         date: '2026-01-20',
       }).toString();
 
-      const abierto = await request(app)
+      const abierto = await request(app.getHttpServer())
         .get(`/api/cash-cuts/summary?${query}`)
         .set(headers(tenant.id));
-      assert.equal(abierto.status, 200);
-      assert.equal(abierto.body.scope.cashierName, 'Sin asignar');
-      assert.equal(abierto.body.summary.cashTotal, 200);
+      expect(abierto.status).toBe(200);
+      expect(abierto.body.scope.cashierName).toBe('Sin asignar');
+      expect(abierto.body.summary.cashTotal).toBe(200);
 
-      const cierre = await request(app)
+      const cierre = await request(app.getHttpServer())
         .post('/api/cash-cuts/close')
         .set(headers(tenant.id))
         .send({
@@ -420,10 +416,10 @@ describe('Pantalla de corte de caja', () => {
           date: '2026-01-20',
           countedCash: 200,
         });
-      assert.equal(cierre.status, 201);
-      assert.equal(cierre.body.cashier, 'Sin asignar');
+      expect(cierre.status).toBe(201);
+      expect(cierre.body.cashier).toBe('Sin asignar');
 
-      const repetido = await request(app)
+      const repetido = await request(app.getHttpServer())
         .post('/api/cash-cuts/close')
         .set(headers(tenant.id))
         .send({
@@ -433,34 +429,34 @@ describe('Pantalla de corte de caja', () => {
           date: '2026-01-20',
           countedCash: 200,
         });
-      assert.equal(repetido.status, 409);
+      expect(repetido.status).toBe(409);
 
       const guardado = await prisma.cashCut.findUnique({ where: { id: cierre.body.cutId } });
-      assert.ok(guardado?.cashierId && guardado.cashierId > 0);
-      assert.equal(guardado?.closedById, null);
+      expect(guardado?.cashierId && guardado.cashierId > 0).toBeTruthy();
+      expect(guardado?.closedById).toBe(null);
       const tecnico = await prisma.user.findUnique({ where: { id: guardado?.cashierId } });
-      assert.equal(tecnico?.fullName, 'Sin asignar');
-      assert.match(tecnico?.email ?? '', /@sistema\.local$/);
+      expect(tecnico?.fullName).toBe('Sin asignar');
+      expect(tecnico?.email ?? '').toMatch(/@sistema\.local$/);
 
-      const cerrado = await request(app)
+      const cerrado = await request(app.getHttpServer())
         .get(`/api/cash-cuts/summary?${query}`)
         .set(headers(tenant.id));
-      assert.equal(cerrado.status, 200);
-      assert.equal(cerrado.body.status, 'closed');
-      assert.equal(cerrado.body.summary.cashTotal, 200);
+      expect(cerrado.status).toBe(200);
+      expect(cerrado.body.status).toBe('closed');
+      expect(cerrado.body.summary.cashTotal).toBe(200);
 
-      const historial = await request(app)
+      const historial = await request(app.getHttpServer())
         .get('/api/cash-cuts')
         .set(headers(tenant.id));
-      assert.equal(historial.status, 200);
-      assert.equal(historial.body[0].cashier.fullName, 'Sin asignar');
-      assert.equal(historial.body[0].closedBy, null);
+      expect(historial.status).toBe(200);
+      expect(historial.body[0].cashier.fullName).toBe('Sin asignar');
+      expect(historial.body[0].closedBy).toBe(null);
 
-      const exportado = await request(app)
+      const exportado = await request(app.getHttpServer())
         .get(`/api/cash-cuts/${cierre.body.cutId}/export`)
         .set(headers(tenant.id));
-      assert.equal(exportado.status, 200);
-      assert.match(exportado.text, /Sin asignar/);
+      expect(exportado.status).toBe(200);
+      expect(exportado.text).toMatch(/Sin asignar/);
     } finally {
       await prisma.payment.deleteMany({ where: { tenantId: tenant.id } });
       await prisma.cashCut.deleteMany({ where: { tenantId: tenant.id } });
@@ -472,29 +468,29 @@ describe('Pantalla de corte de caja', () => {
   });
 
   it('exporta el corte en CSV y valida el identificador', async () => {
-    const res = await request(app)
+    const res = await request(app.getHttpServer())
       .get(`/api/cash-cuts/${cutId}/export`)
       .set(headers(fixture.tenantId));
 
-    assert.equal(res.status, 200);
-    assert.match(String(res.headers['content-type']), /text\/csv/);
-    assert.match(String(res.headers['content-disposition']), /corte-caja-/);
-    assert.ok(res.text.startsWith('\uFEFF"Reporte","Corte de caja"'));
-    assert.match(res.text, /Faltante de cambio/);
-    assert.match(res.text, /Sucursal corte/);
-    assert.match(res.text, /Cajero corte/);
+    expect(res.status).toBe(200);
+    expect(String(res.headers['content-type'])).toMatch(/text\/csv/);
+    expect(String(res.headers['content-disposition'])).toMatch(/corte-caja-/);
+    expect(res.text.startsWith('\uFEFF"Reporte","Corte de caja"')).toBeTruthy();
+    expect(res.text).toMatch(/Faltante de cambio/);
+    expect(res.text).toMatch(/Sucursal corte/);
+    expect(res.text).toMatch(/Cajero corte/);
 
-    const invalid = await request(app).get('/api/cash-cuts/abc/export').set(headers(fixture.tenantId));
-    assert.equal(invalid.status, 400);
-    assert.equal(invalid.body.error, 'ID de corte inválido');
+    const invalid = await request(app.getHttpServer()).get('/api/cash-cuts/abc/export').set(headers(fixture.tenantId));
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error.mensaje).toBe('ID de corte inválido');
 
-    const unknown = await request(app).get('/api/cash-cuts/999999999/export').set(headers(fixture.tenantId));
-    assert.equal(unknown.status, 404);
-    assert.equal(unknown.body.error, 'Corte de caja no encontrado');
+    const unknown = await request(app.getHttpServer()).get('/api/cash-cuts/999999999/export').set(headers(fixture.tenantId));
+    expect(unknown.status).toBe(404);
+    expect(unknown.body.error.mensaje).toBe('Corte de caja no encontrado');
 
-    const otherTenant = await request(app)
+    const otherTenant = await request(app.getHttpServer())
       .get(`/api/cash-cuts/${cutId}/export`)
       .set(headers(fixture.tenantId + 999999));
-    assert.equal(otherTenant.status, 404);
+    expect(otherTenant.status).toBe(404);
   });
 });

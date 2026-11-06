@@ -1,6 +1,6 @@
 import express, { type Application } from 'express';
 import type { Router } from 'express';
-import { prisma } from '../../config/db';
+import { prisma } from '../prisma-pruebas';
 
 // Utilidades compartidas por las pruebas de pantalla.
 // Cada archivo crea su propio laboratorio (tenant) de QA para no tocar datos reales

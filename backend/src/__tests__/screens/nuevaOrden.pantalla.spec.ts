@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { prisma } from '../../config/db';
+import { prisma } from '../prisma-pruebas';
 import { closeDatabase, createScreenFixture, headers, type ScreenFixture } from './support';
 import { construirAppNest } from './support-nest';
 

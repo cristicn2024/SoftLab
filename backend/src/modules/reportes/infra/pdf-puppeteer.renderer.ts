@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { generateReportPDF } from '../../../services/pdf.service';
+import { generateReportPDF } from './pdf.service';
 import type { PdfRenderer } from '../dominio/reportes.repository';
 import type { ReportPdfData } from '../dominio/reportes.types';
 

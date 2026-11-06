@@ -17,7 +17,7 @@ jest.mock('puppeteer', () => ({
 
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { generateReportPDF } from '../services/pdf.service';
+import { generateReportPDF } from '../modules/reportes/infra/pdf.service';
 import { construirAppNest } from './screens/support-nest';
 
 let app: INestApplication;

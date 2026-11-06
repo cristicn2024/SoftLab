@@ -143,6 +143,8 @@ describe('API de nueva orden', () => {
 
     expect(repositorio.orders[0].data.items).toEqual([{ price: 150, testId: 1 }, { price: 300, profileId: 3 }]);
     expect(repositorio.orders[0].data.totalAmount).toBe(450);
+    expect(repositorio.orders[0].data.folio).toBe(primera.body.folio);
+    expect(repositorio.orders[1].data.folio).toBe(segunda.body.folio);
   });
 
   it('acepta números como texto y listas vacías como hace la pantalla', async () => {

@@ -125,6 +125,49 @@ test('acumula totales por método, descuentos y cancelaciones', () => {
   assert.equal(live.movements[0].patient, 'Ana López');
 });
 
+test('los pagos anulados no suman a los totales ni al método de la orden', () => {
+  const start = new Date(2026, 0, 15, 8);
+  const end = new Date(2026, 0, 15, 15);
+  const live = buildLiveSummary(
+    [
+      order(1, {
+        totalAmount: 300,
+        payments: [
+          { method: 'cash', amount: 100 },
+          { method: 'card', amount: 200, cancelled: true },
+        ],
+      }),
+      order(2, { payments: [{ method: 'transfer', amount: 80, cancelled: true }] }),
+    ],
+    start,
+    end,
+  );
+
+  assert.equal(live.summary.cashTotal, 100);
+  assert.equal(live.summary.cardTotal, 0);
+  assert.equal(live.summary.transferTotal, 0);
+  assert.equal(live.summary.totalPaid, 100);
+  assert.equal(live.summary.expectedCash, 100);
+  assert.equal(live.summary.ordersCount, 2);
+  assert.deepEqual(live.movements[0].payments, [{ method: 'cash', label: 'Efectivo', amount: 100 }]);
+  assert.equal(live.movements[0].method, 'cash');
+  assert.equal(live.movements[1].method, 'pending');
+  assert.deepEqual(live.movements[1].payments, []);
+});
+
+test('un pago normal de una orden cancelada sigue contando hasta que se anule en cobro', () => {
+  const start = new Date(2026, 0, 15, 8);
+  const end = new Date(2026, 0, 15, 15);
+  const live = buildLiveSummary(
+    [order(1, { status: 'cancelled', payments: [{ method: 'cash', amount: 50 }] })],
+    start,
+    end,
+  );
+  assert.equal(live.summary.cashTotal, 50);
+  assert.equal(live.summary.cancellationsCount, 1);
+  assert.equal(live.movements[0].method, 'cancelled');
+});
+
 test('parseSnapshot tolera datos vacíos o dañados', () => {
   assert.equal(parseSnapshot(null), null);
   assert.equal(parseSnapshot('{no es json'), null);

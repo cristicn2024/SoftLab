@@ -208,6 +208,7 @@ describe('Pantalla de nueva orden', () => {
     expect(stored.branchId).toBe(fixture.branchId);
     expect(stored.patientId).toBe(cleanPatientId);
     expect(stored.status).toBe('pending');
+    expect(stored.folio).toBe(first.body.folio);
     expect(Number(stored.totalAmount)).toBe(450);
     expect(stored.items.length).toBe(2);
 

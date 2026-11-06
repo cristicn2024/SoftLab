@@ -1,3 +1,4 @@
+import { DuplicateFolioError } from './ordenes.errors';
 import type { OrdenesRepository } from './ordenes.repository';
 import type {
   CatalogProfile,
@@ -26,6 +27,7 @@ export class FakeRepository implements OrdenesRepository {
   readonly orders: StoredOrder[] = [];
   readonly doctors: Doctor[] = [];
   failWith: Error | null = null;
+  forcedDuplicates = 0;
   private readonly tests: { tenantId: number; test: CatalogTest }[] = [];
   private readonly profiles: { tenantId: number; profile: CatalogProfile; active: boolean }[] = [];
   private nextOrderId = 1;
@@ -39,10 +41,10 @@ export class FakeRepository implements OrdenesRepository {
     this.profiles.push({ tenantId, profile, active });
   }
 
-  addOrder(tenantId: number, patientId: number, status: string, createdAt: Date): StoredOrder {
+  addOrder(tenantId: number, patientId: number, status: string, createdAt: Date, folio = ''): StoredOrder {
     const order: StoredOrder = {
       id: this.nextOrderId++,
-      data: { tenantId, branchId: 1, patientId, doctorId: null, totalAmount: 0, items: [] },
+      data: { tenantId, branchId: 1, patientId, doctorId: null, totalAmount: 0, folio, items: [] },
       status,
       createdAt,
     };
@@ -108,8 +110,24 @@ export class FakeRepository implements OrdenesRepository {
     return count;
   }
 
+  async countFoliosWithPrefix(prefix: string): Promise<number> {
+    this.check();
+    let count = 0;
+    for (const order of this.orders) {
+      if (order.data.folio.startsWith(prefix)) count++;
+    }
+    return count;
+  }
+
   async createOrder(data: NewOrderData): Promise<{ id: number }> {
     this.check();
+    if (this.forcedDuplicates > 0) {
+      this.forcedDuplicates--;
+      throw new DuplicateFolioError();
+    }
+    for (const order of this.orders) {
+      if (data.folio !== '' && order.data.folio === data.folio) throw new DuplicateFolioError();
+    }
     for (const item of data.items) {
       if (Number.isNaN(item.price) || Number.isNaN(item.testId) || Number.isNaN(item.profileId)) {
         throw new Error('Argument items: Invalid value provided. Expected Int, provided NaN');

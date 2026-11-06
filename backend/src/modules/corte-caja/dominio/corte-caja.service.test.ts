@@ -65,6 +65,21 @@ test('el resumen abierto suma solo lo del turno y cajero', async () => {
   assert.equal(res.scope.schedule, '08:00 – 15:00');
 });
 
+test('el resumen no cuenta los pagos anulados en cobro', async () => {
+  const { repository, service } = setup();
+  repository.addOrder(1, 10, 5, at(13), {
+    totalAmount: 500,
+    payments: [
+      { method: 'cash', amount: 120 },
+      { method: 'cash', amount: 380, cancelled: true },
+    ],
+  });
+  const res = await service.getSummary(SCOPE);
+  assert.equal(res.summary.cashTotal, 420);
+  assert.equal(res.summary.expectedCash, 420);
+  assert.equal(res.summary.totalPaid, 470);
+});
+
 test('sucursal y cajero inexistentes dan 404 antes de revisar la fecha', async () => {
   const { service } = setup();
   await rejectsWith(service.getSummary({ ...SCOPE, branchId: 99, date: '2026-02-30' }), BranchNotFoundError, 'Sucursal no encontrada');

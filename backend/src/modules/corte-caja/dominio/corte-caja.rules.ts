@@ -87,6 +87,14 @@ export function defaultShiftFor(date: Date): ShiftValue {
   return shiftForHour(date.getHours());
 }
 
+export function activePayments(payments: LivePayment[]): LivePayment[] {
+  const active: LivePayment[] = [];
+  for (const payment of payments) {
+    if (!payment.cancelled) active.push(payment);
+  }
+  return active;
+}
+
 export function methodForOrder(status: string, payments: LivePayment[]): { method: MovementMethod; label: string } {
   if (status === 'cancelled') return { method: 'cancelled', label: 'Cancelado' };
   if (payments.length === 0) return { method: 'pending', label: 'Pendiente' };
@@ -120,7 +128,8 @@ export function buildLiveSummary(orders: LiveOrder[], start: Date, end: Date): L
   const movements: CashCutMovement[] = [];
   for (const order of orders) {
     const payments: CashCutMovement['payments'] = [];
-    for (const payment of order.payments) {
+    const received = activePayments(order.payments);
+    for (const payment of received) {
       payments.push({ method: payment.method, label: METHOD_LABEL[payment.method], amount: payment.amount });
       if (payment.method === 'cash') summary.cashTotal += payment.amount;
       if (payment.method === 'card') summary.cardTotal += payment.amount;
@@ -131,7 +140,7 @@ export function buildLiveSummary(orders: LiveOrder[], start: Date, end: Date): L
     summary.discountsTotal += order.discountAmount;
     if (order.status === 'cancelled') summary.cancellationsCount += 1;
 
-    const { method, label } = methodForOrder(order.status, order.payments);
+    const { method, label } = methodForOrder(order.status, received);
     movements.push({
       id: order.id,
       time: order.createdAt.toISOString(),

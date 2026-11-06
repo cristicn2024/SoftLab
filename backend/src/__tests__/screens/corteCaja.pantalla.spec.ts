@@ -213,6 +213,40 @@ describe('Pantalla de corte de caja', () => {
     expect(byId.has(orderOtherCashier.id)).toBe(false);
   });
 
+  it('no cuenta en el corte los pagos anulados desde cobro', async () => {
+    const orderVoided = await fixture.createOrder({
+      createdAt: new Date(2026, 0, 20, 9, 0, 0, 0),
+      totalAmount: 140,
+      payments: [{ method: 'cash', amount: 100 }],
+    });
+    await prisma.payment.create({
+      data: {
+        tenantId: fixture.tenantId,
+        branchId: fixture.branchId,
+        orderId: orderVoided.id,
+        cashierId: fixture.cashier.id,
+        method: 'card',
+        amount: 40,
+        createdBy: 'Cajero corte',
+        cancelled: true,
+        cancelReason: 'Cobro duplicado',
+        cancelledBy: 'Cajero corte',
+        cancelledAt: new Date(2026, 0, 20, 9, 30, 0, 0),
+      },
+    });
+
+    const res = await request(app.getHttpServer())
+      .get(`/api/cash-cuts/summary?${scopeQuery({ date: '2026-01-20' })}`)
+      .set(headers(fixture.tenantId));
+
+    expect(res.status).toBe(200);
+    expect(res.body.summary.cashTotal).toBe(100);
+    expect(res.body.summary.cardTotal).toBe(0);
+    expect(res.body.summary.totalPaid).toBe(100);
+    expect(res.body.movements.length).toBe(1);
+    expect(res.body.movements[0].methodLabel).toBe('Efectivo');
+  });
+
   it('aísla el corte por laboratorio, sucursal y cajero', async () => {
     const otherCashier = await request(app.getHttpServer())
       .get(

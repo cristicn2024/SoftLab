@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { DuplicateFolioError } from '../dominio/ordenes.errors';
 import type { OrdenesRepository } from '../dominio/ordenes.repository';
 import type {
   CatalogProfile,
@@ -9,6 +10,15 @@ import type {
   NewDoctorData,
   NewOrderData,
 } from '../dominio/ordenes.types';
+
+function isDuplicateFolio(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const known = error as { code?: string; meta?: { target?: unknown } };
+  if (known.code !== 'P2002') return false;
+  const target = known.meta?.target;
+  if (Array.isArray(target)) return target.some((field) => String(field).includes('folio'));
+  return String(target).includes('folio');
+}
 
 @Injectable()
 export class OrdenesPrismaRepository implements OrdenesRepository {
@@ -84,6 +94,10 @@ export class OrdenesPrismaRepository implements OrdenesRepository {
     return this.prisma.order.count({ where: { tenantId, createdAt: { gte: since } } });
   }
 
+  countFoliosWithPrefix(prefix: string): Promise<number> {
+    return this.prisma.order.count({ where: { folio: { startsWith: prefix } } });
+  }
+
   async createOrder(data: NewOrderData): Promise<{ id: number }> {
     const orderData: Prisma.OrderUncheckedCreateInput = {
       tenantId: data.tenantId,
@@ -91,13 +105,19 @@ export class OrdenesPrismaRepository implements OrdenesRepository {
       patientId: data.patientId,
       doctorId: data.doctorId,
       totalAmount: data.totalAmount,
+      folio: data.folio,
       status: 'pending',
     };
     if (data.items.length > 0) {
       orderData.items = { create: data.items };
     }
 
-    const order = await this.prisma.order.create({ data: orderData });
-    return { id: order.id };
+    try {
+      const order = await this.prisma.order.create({ data: orderData });
+      return { id: order.id };
+    } catch (error) {
+      if (isDuplicateFolio(error)) throw new DuplicateFolioError();
+      throw error;
+    }
   }
 }

@@ -3,6 +3,7 @@ import {
   BranchRequiredError,
   ConceptSearchFailedError,
   DoctorRegistrationFailedError,
+  DuplicateFolioError,
   OpenOrderLookupFailedError,
   OrderConfirmationFailedError,
   PatientRequiredError,
@@ -11,6 +12,7 @@ import type { OrdenesRepository } from './ordenes.repository';
 import {
   buildConcepts,
   buildFolio,
+  buildFolioPrefix,
   buildOrderItems,
   normalizeQuery,
   parseOpenOrderPatientId,
@@ -27,6 +29,7 @@ import type {
 
 const TESTS_LIMIT = 10;
 const PROFILES_LIMIT = 5;
+const FOLIO_ATTEMPTS = 5;
 
 export class OrdenesService {
   constructor(private readonly repository: OrdenesRepository) {}
@@ -81,19 +84,31 @@ export class OrdenesService {
 
     try {
       const countToday = await this.repository.countOrdersSince(tenantId, startOfDay(now));
-      const folio = buildFolio(now, countToday);
+      let folio = buildFolio(now, countToday);
       const items = buildOrderItems(input.items);
       const totalAmount = input.totalAmount ? Number(input.totalAmount) : 0;
 
-      const created = await this.repository.createOrder({
-        tenantId,
-        branchId,
-        patientId,
-        doctorId,
-        totalAmount,
-        items,
-      });
-      return { success: true, folio, orderId: created.id };
+      for (let attempt = 1; attempt <= FOLIO_ATTEMPTS; attempt++) {
+        try {
+          const created = await this.repository.createOrder({
+            tenantId,
+            branchId,
+            patientId,
+            doctorId,
+            totalAmount,
+            folio,
+            items,
+          });
+          return { success: true, folio, orderId: created.id };
+        } catch (error) {
+          if (!(error instanceof DuplicateFolioError)) throw error;
+          // El folio es único en toda la base: si ya lo tomó otra orden (otra sucursal,
+          // otro laboratorio o una captura simultánea), se recalcula con el total del día.
+          const takenToday = await this.repository.countFoliosWithPrefix(buildFolioPrefix(now));
+          folio = buildFolio(now, takenToday + attempt - 1);
+        }
+      }
+      throw new OrderConfirmationFailedError();
     } catch (error) {
       if (error instanceof ErrorDeDominio) throw error;
       console.error('Error en createOrder:', error);

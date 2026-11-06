@@ -54,6 +54,8 @@ export interface LastPayment {
 export interface LivePayment {
   method: PaymentMethodValue;
   amount: number;
+  /** Pago anulado desde cobro: ya no es dinero recibido y no entra al corte. */
+  cancelled?: boolean;
 }
 
 export interface LiveOrder {

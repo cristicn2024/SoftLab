@@ -35,3 +35,9 @@ export class OrderConfirmationFailedError extends ErrorDeDominio {
     super('Error al confirmar la orden');
   }
 }
+
+export class DuplicateFolioError extends ErrorDeDominio {
+  constructor() {
+    super('El folio de la orden ya existe');
+  }
+}

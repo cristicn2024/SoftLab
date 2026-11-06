@@ -43,9 +43,13 @@ export function startOfDay(now: Date): Date {
   return start;
 }
 
-export function buildFolio(now: Date, countToday: number): string {
+export function buildFolioPrefix(now: Date): string {
   const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-  return `ORD-${dateStr}-${(countToday + 1).toString().padStart(4, '0')}`;
+  return `ORD-${dateStr}-`;
+}
+
+export function buildFolio(now: Date, countToday: number): string {
+  return `${buildFolioPrefix(now)}${(countToday + 1).toString().padStart(4, '0')}`;
 }
 
 export function buildOrderItems(rawItems: unknown): NewOrderItem[] {

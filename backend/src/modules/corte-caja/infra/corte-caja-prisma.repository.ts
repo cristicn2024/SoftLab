@@ -119,7 +119,7 @@ export class CorteCajaPrismaRepository implements CorteCajaRepository {
     for (const order of orders) {
       const payments: LivePayment[] = [];
       for (const payment of order.payments) {
-        payments.push({ method: payment.method, amount: Number(payment.amount) });
+        payments.push({ method: payment.method, amount: Number(payment.amount), cancelled: payment.cancelled });
       }
       result.push({
         id: order.id,

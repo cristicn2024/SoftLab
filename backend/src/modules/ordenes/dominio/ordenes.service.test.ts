@@ -5,6 +5,7 @@ import {
   BranchRequiredError,
   ConceptSearchFailedError,
   DoctorRegistrationFailedError,
+  DuplicateFolioError,
   OpenOrderLookupFailedError,
   OrderConfirmationFailedError,
   PatientRequiredError,
@@ -127,6 +128,7 @@ test('crea la orden pendiente con sus estudios y perfiles y devuelve el folio', 
   assert.equal(stored.data.patientId, 5);
   assert.equal(stored.data.doctorId, null);
   assert.equal(stored.data.totalAmount, 450);
+  assert.equal(stored.data.folio, result.folio);
   assert.deepEqual(stored.data.items, [{ price: 150, testId: 1 }, { price: 300, profileId: 3 }]);
 });
 
@@ -146,6 +148,37 @@ test('cada orden del día lleva el siguiente consecutivo y el médico se convier
   const result = await service.createOrder(1, { patientId: 5, branchId: 1, doctorId: '7' }, hoy);
   assert.match(result.folio, /-0003$/);
   assert.equal(repository.orders[repository.orders.length - 1].data.doctorId, 7);
+});
+
+test('si el folio ya existe en otro laboratorio toma el siguiente libre del día', async () => {
+  const { repository, service } = setup();
+  repository.addOrder(2, 9, 'pending', NOW, 'ORD-20261103-0001');
+  repository.addOrder(2, 9, 'pending', NOW, 'ORD-20261103-0002');
+  repository.addOrder(2, 9, 'pending', NOW, 'ORD-20261103-0003');
+  const result = await service.createOrder(1, { patientId: 5, branchId: 1 }, new Date(Date.UTC(2026, 10, 3, 18, 0)));
+  assert.equal(result.folio, 'ORD-20261103-0004');
+  assert.equal(repository.orders[repository.orders.length - 1].data.folio, 'ORD-20261103-0004');
+});
+
+test('si dos capturas chocan seguidas sigue intentando con el siguiente consecutivo', async () => {
+  const { repository, service } = setup();
+  repository.forcedDuplicates = 2;
+  const result = await service.createOrder(1, { patientId: 5, branchId: 1 }, new Date(Date.UTC(2026, 10, 3, 18, 0)));
+  assert.equal(result.folio, 'ORD-20261103-0002');
+  assert.equal(repository.orders.length, 1);
+});
+
+test('después de cinco choques de folio responde que no se pudo confirmar la orden', async () => {
+  const { repository, service } = setup();
+  repository.forcedDuplicates = 5;
+  const consola = console.error;
+  console.error = () => {};
+  try {
+    await assert.rejects(service.createOrder(1, { patientId: 5, branchId: 1 }, NOW), OrderConfirmationFailedError);
+  } finally {
+    console.error = consola;
+  }
+  assert.equal(repository.orders.length, 0);
 });
 
 test('un concepto con id inválido hace fallar toda la orden y no se guarda nada', async () => {
@@ -168,6 +201,7 @@ test('un concepto con id inválido hace fallar toda la orden y no se guarda nada
 });
 
 test('todos los errores de órdenes son errores de dominio', () => {
+  assert.ok(new DuplicateFolioError() instanceof ErrorDeDominio);
   for (const error of [
     new PatientRequiredError(),
     new BranchRequiredError(),

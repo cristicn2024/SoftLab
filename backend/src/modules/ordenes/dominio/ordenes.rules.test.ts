@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildConcepts,
   buildFolio,
+  buildFolioPrefix,
   buildOrderItems,
   normalizeQuery,
   parseOpenOrderPatientId,
@@ -38,6 +39,12 @@ test('el folio usa la fecha en UTC y el consecutivo del día con cuatro cifras',
   assert.equal(buildFolio(now, 0), 'ORD-20261103-0001');
   assert.equal(buildFolio(now, 41), 'ORD-20261103-0042');
   assert.equal(buildFolio(now, 12344), 'ORD-20261103-12345');
+});
+
+test('el prefijo del folio es el del día en UTC y todo folio del día empieza con él', () => {
+  const now = new Date(Date.UTC(2026, 10, 3, 15, 0));
+  assert.equal(buildFolioPrefix(now), 'ORD-20261103-');
+  assert.ok(buildFolio(now, 7).startsWith(buildFolioPrefix(now)));
 });
 
 test('el inicio del día se calcula en hora local', () => {

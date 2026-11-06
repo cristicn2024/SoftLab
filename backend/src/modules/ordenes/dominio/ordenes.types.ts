@@ -61,6 +61,7 @@ export interface NewOrderData {
   patientId: number;
   doctorId: number | null;
   totalAmount: number;
+  folio: string;
   items: NewOrderItem[];
 }
 

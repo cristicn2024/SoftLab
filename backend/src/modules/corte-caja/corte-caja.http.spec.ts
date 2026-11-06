@@ -106,6 +106,21 @@ describe('API de corte de caja', () => {
     });
   });
 
+  it('el resumen deja fuera los pagos anulados en cobro', async () => {
+    repositorio.addOrder(1, 10, 5, at(13), {
+      totalAmount: 500,
+      payments: [
+        { method: 'card', amount: 120 },
+        { method: 'cash', amount: 380, cancelled: true },
+      ],
+    });
+    const res = await request(app.getHttpServer()).get(`/api/cash-cuts/summary?${QUERY}`).set(TENANT);
+    expect(res.status).toBe(200);
+    expect(res.body.summary.cashTotal).toBe(300);
+    expect(res.body.summary.cardTotal).toBe(170);
+    expect(res.body.summary.totalPaid).toBe(470);
+  });
+
   it('valida el cierre: observación, monto y tamaño', async () => {
     const server = app.getHttpServer();
     const cuerpo = { branchId: 10, cashierId: 5, shift: 'matutino', date: '2026-01-15' };

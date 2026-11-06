@@ -46,7 +46,7 @@ actual tiene rol Administradora: proporcionar un motivo y volver a solicitar sin
 motivo para comprobar que la autorización no persiste. El saldo y los eventos
 pueden consultarse en `/ordenes/cobro?orden=ID`.
 
-Pruebas de la regla: npm run test:delivery (13 casos, sin conexión a MySQL).
+Pruebas de la regla: npm test (reglas puras, sin conexión a MySQL).
 
 Limitaciones del proyecto: la identidad y el rol aún se reciben por encabezados,
 como en cobro. Deben provenir de una sesión autenticada antes de producción.

@@ -12,5 +12,7 @@ export interface OrdenesRepository {
   findPendingOrderSince(tenantId: number, patientId: number, since: Date): Promise<{ id: number } | null>;
   createDoctor(data: NewDoctorData): Promise<Doctor>;
   countOrdersSince(tenantId: number, since: Date): Promise<number>;
+  countFoliosWithPrefix(prefix: string): Promise<number>;
+  /** Lanza DuplicateFolioError si el folio ya existe (el folio es único en toda la base). */
   createOrder(data: NewOrderData): Promise<{ id: number }>;
 }

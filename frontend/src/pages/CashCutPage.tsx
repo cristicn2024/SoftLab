@@ -125,12 +125,12 @@ const METHOD_THEME: Record<
   string,
   { background: string; color: string; dot: string }
 > = {
-  cash: { background: '#e7f2ea', color: '#1e6b3a', dot: '#2e8b57' },
-  card: { background: '#e8eefb', color: '#264a9e', dot: '#3b6ad6' },
-  transfer: { background: '#f1e9fb', color: '#6b3fa0', dot: '#8b5cf6' },
-  mixed: { background: '#fff3e0', color: '#8a5100', dot: '#d97706' },
-  pending: { background: '#f1f1f1', color: '#616161', dot: '#9ca3af' },
-  cancelled: { background: '#fde8e8', color: '#a61b1b', dot: '#dc2626' }
+  cash: { background: '#f1f0ea', color: '#4a4c4a', dot: '#9da09b' },
+  card: { background: '#f1f0ea', color: '#4a4c4a', dot: '#9da09b' },
+  transfer: { background: '#f1f0ea', color: '#4a4c4a', dot: '#9da09b' },
+  mixed: { background: '#f1f0ea', color: '#4a4c4a', dot: '#9da09b' },
+  pending: { background: '#f3f0e8', color: '#6a6d6c', dot: '#b1b2ac' },
+  cancelled: { background: '#f7ecea', color: '#b3261e', dot: '#b3261e' }
 };
 
 const Icon: React.FC<{ name: string; size?: number; color?: string }> = ({
@@ -241,30 +241,13 @@ const KpiCard: React.FC<{
   label: string;
   value: string;
   detail?: string;
-  icon: string;
-  tone: 'green' | 'blue' | 'violet' | 'neutral' | 'amber' | 'red';
-}> = ({ label, value, detail, icon, tone }) => {
-  const tones: Record<string, { background: string; color: string }> = {
-    green: { background: '#e7f2ea', color: '#1e6b3a' },
-    blue: { background: '#e8eefb', color: '#264a9e' },
-    violet: { background: '#f1e9fb', color: '#6b3fa0' },
-    neutral: { background: '#f1f1ef', color: '#4b4b4b' },
-    amber: { background: '#fff3e0', color: '#8a5100' },
-    red: { background: '#fde8e8', color: '#a61b1b' }
-  };
-  const theme = tones[tone];
-
-  return (
-    <div style={styles.kpiCard} className="print-card">
-      <div style={{ ...styles.kpiIcon, backgroundColor: theme.background, color: theme.color }}>
-        <Icon name={icon} size={17} />
-      </div>
-      <div style={styles.kpiLabel}>{label}</div>
-      <div style={styles.kpiValue}>{value}</div>
-      {detail ? <div style={styles.kpiDetail}>{detail}</div> : null}
-    </div>
-  );
-};
+}> = ({ label, value, detail }) => (
+  <div style={styles.kpiCard} className="print-card">
+    <div style={styles.kpiLabel}>{label}</div>
+    <div style={styles.kpiValue}>{value}</div>
+    {detail ? <div style={styles.kpiDetail}>{detail}</div> : null}
+  </div>
+);
 
 export const CashCutPage: React.FC = () => {
   const { actualizarSesion } = useSesion();
@@ -514,7 +497,7 @@ export const CashCutPage: React.FC = () => {
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          .print-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+          .print-card { box-shadow: none !important; border: 1px solid #d7d1c4 !important; }
           body { background: #ffffff !important; }
         }
         .kpi-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
@@ -545,7 +528,7 @@ export const CashCutPage: React.FC = () => {
               {closed && data && (
                 <div style={styles.closedBanner}>
                   <div style={styles.closedBannerIcon}>
-                    <Icon name="check" size={18} color="#1e6b3a" />
+                    <Icon name="check" size={18} color="#2e6b3f" />
                   </div>
                   <div>
                     <div style={styles.closedBannerTitle}>
@@ -571,38 +554,25 @@ export const CashCutPage: React.FC = () => {
                       : 'Resumen y cierre del turno por sucursal y cajero.'}
                   </p>
                 </div>
-                <div style={styles.statusPillWrap}>
-                  <span
-                    style={{
-                      ...styles.statusPill,
-                      ...(closed ? styles.statusPillClosed : styles.statusPillOpen)
-                    }}
+                <div style={styles.pageActions} className="no-print">
+                  <button
+                    type="button"
+                    style={styles.secondaryBtn}
+                    onClick={handleExport}
+                    disabled={!data}
                   >
-                    <span
-                      style={{
-                        ...styles.statusDot,
-                        backgroundColor: closed ? '#2e8b57' : '#d97706'
-                      }}
-                    />
-                    {closed ? 'Cerrado' : 'Abierto'}
-                  </span>
+                    <Icon name="download" size={15} />
+                    Exportar
+                  </button>
+                  <button type="button" style={styles.secondaryBtn} onClick={handlePrint}>
+                    <Icon name="printer" size={15} />
+                    Imprimir
+                  </button>
                 </div>
               </div>
 
-              <section style={styles.card} className="print-card">
-                <div style={styles.cardHeadingRow}>
-                  <div>
-                    <h2 style={styles.cardTitle}>Filtros del turno</h2>
-                    <p style={styles.cardHint}>
-                      Selecciona la sucursal, el cajero, el turno y la fecha a consolidar.
-                    </p>
-                  </div>
-                  <div style={styles.filterIcon}>
-                    <Icon name="calendar" size={17} color="#1E3A2B" />
-                  </div>
-                </div>
-
-                <div style={styles.filterGrid} className="no-print">
+              <section style={styles.filtersSection} className="no-print">
+                <div style={styles.filterGrid}>
                   <div style={styles.field}>
                     <label style={styles.label}>Sucursal</label>
                     <select
@@ -685,43 +655,31 @@ export const CashCutPage: React.FC = () => {
                     <KpiCard
                       label="Efectivo total"
                       value={money(data.summary.cashTotal)}
-                      icon="cash"
-                      tone="green"
                       detail="Pagos en efectivo"
                     />
                     <KpiCard
                       label="Tarjeta total"
                       value={money(data.summary.cardTotal)}
-                      icon="card"
-                      tone="blue"
                       detail="Débito y crédito"
                     />
                     <KpiCard
                       label="Transferencia"
                       value={money(data.summary.transferTotal)}
-                      icon="transfer"
-                      tone="violet"
                       detail="Transferencias bancarias"
                     />
                     <KpiCard
                       label="Órdenes"
                       value={String(data.summary.ordersCount)}
-                      icon="orders"
-                      tone="neutral"
                       detail="Registradas en el turno"
                     />
                     <KpiCard
                       label="Descuentos"
                       value={money(data.summary.discountsTotal)}
-                      icon="discount"
-                      tone="amber"
                       detail="Otorgados en el turno"
                     />
                     <KpiCard
                       label="Cancelaciones"
                       value={String(data.summary.cancellationsCount)}
-                      icon="cancel"
-                      tone="red"
                       detail="Órdenes canceladas"
                     />
                   </section>
@@ -741,7 +699,13 @@ export const CashCutPage: React.FC = () => {
                           ...(closed ? styles.statusPillClosed : styles.statusPillOpen)
                         }}
                       >
-                        {closed ? 'Corte cerrado' : 'En captura'}
+                        <span
+                          style={{
+                            ...styles.statusDot,
+                            backgroundColor: closed ? '#2e6b3f' : '#8b8e89'
+                          }}
+                        />
+                        {closed ? 'Corte cerrado' : 'Abierto'}
                       </span>
                     </div>
 
@@ -791,7 +755,7 @@ export const CashCutPage: React.FC = () => {
                             <span
                               style={{
                                 ...styles.moneyValue,
-                                color: hasDifference ? '#b42318' : '#1e6b3a'
+                                color: hasDifference ? '#b3261e' : '#2e6b3f'
                               }}
                             >
                               {difference === null ? '—' : money(difference)}
@@ -799,7 +763,7 @@ export const CashCutPage: React.FC = () => {
                             <span
                               style={{
                                 ...styles.moneyHelp,
-                                color: hasDifference ? '#b42318' : '#1e6b3a'
+                                color: hasDifference ? '#b3261e' : '#2e6b3f'
                               }}
                             >
                               {difference === null
@@ -877,12 +841,12 @@ export const CashCutPage: React.FC = () => {
                         </div>
                         <div style={styles.asideRow}>
                           <span>Diferencia</span>
-                          <strong style={{ color: hasDifference ? '#b42318' : '#1e6b3a' }}>
+                          <strong style={{ color: hasDifference ? '#b3261e' : '#2e6b3f' }}>
                             {difference === null ? '—' : money(difference)}
                           </strong>
                         </div>
                         <div style={styles.asideNote}>
-                          <Icon name="lock" size={14} color="#6b7280" />
+                          <Icon name="lock" size={14} color="#8b8e89" />
                           <span>
                             Al cerrar, los acumulados y movimientos quedan bloqueados para consulta.
                           </span>
@@ -969,18 +933,13 @@ export const CashCutPage: React.FC = () => {
                     </div>
                   </section>
 
-                  <div style={styles.actionRow} className="no-print">
-                    <div style={styles.actionLeft}>
-                      <button type="button" style={styles.secondaryBtn} onClick={handleExport}>
-                        <Icon name="download" size={16} />
-                        Exportar
-                      </button>
-                      <button type="button" style={styles.secondaryBtn} onClick={handlePrint}>
-                        <Icon name="printer" size={16} />
-                        Imprimir
-                      </button>
-                    </div>
-
+                  <div
+                    style={{
+                      ...styles.actionRow,
+                      justifyContent: closed ? 'flex-start' : 'flex-end'
+                    }}
+                    className="no-print"
+                  >
                     {closed ? (
                       <div style={styles.closedAction}>
                         <span style={styles.closedActionBadge}>
@@ -1090,49 +1049,51 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '16px',
     marginBottom: '18px'
   },
-  pageTitle: { fontSize: '28px', fontWeight: 600, margin: 0, color: '#171717' },
-  pageSubtitle: { fontSize: '13px', color: '#525252', margin: '4px 0 0' },
+  pageActions: { display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, paddingTop: '2px' },
+  pageTitle: { fontSize: '30px', fontWeight: 600, margin: 0, color: '#14181b', letterSpacing: '-0.3px' },
+  pageSubtitle: { fontSize: '13px', color: '#6a6d6c', margin: '5px 0 0' },
   statusPillWrap: { display: 'flex', alignItems: 'center', paddingTop: '6px' },
   statusPill: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '7px',
-    padding: '5px 11px',
-    borderRadius: '999px',
-    fontSize: '12px',
+    padding: '4px 10px',
+    border: '1px solid #d7d1c4',
+    borderRadius: '4px',
+    fontSize: '11px',
     fontWeight: 600,
     whiteSpace: 'nowrap'
   },
-  statusPillOpen: { backgroundColor: '#fff4e5', color: '#8a5100' },
-  statusPillClosed: { backgroundColor: '#e7f2ea', color: '#1e6b3a' },
-  statusDot: { width: '7px', height: '7px', borderRadius: '999px', display: 'inline-block' },
+  statusPillOpen: { backgroundColor: 'transparent', color: '#6a6d6c' },
+  statusPillClosed: { backgroundColor: 'transparent', color: '#2e6b3f' },
+  statusDot: { width: '6px', height: '6px', borderRadius: '999px', display: 'inline-block' },
   closedBanner: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '12px',
-    backgroundColor: '#ecf6ef',
-    border: '1px solid #b7dcc3',
-    borderRadius: '10px',
-    padding: '14px 16px',
+    backgroundColor: '#fbfaf6',
+    border: '1px solid #e8e4da',
+    borderRadius: '6px',
+    padding: '13px 16px',
     marginBottom: '18px'
   },
   closedBannerIcon: {
-    width: '28px',
-    height: '28px',
+    width: '26px',
+    height: '26px',
     borderRadius: '999px',
-    backgroundColor: '#d5ebdc',
+    backgroundColor: '#e7efe8',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0
   },
-  closedBannerTitle: { fontSize: '13px', fontWeight: 700, color: '#1e6b3a' },
-  closedBannerText: { fontSize: '12px', color: '#2e693e', marginTop: '3px', lineHeight: 1.45 },
+  closedBannerTitle: { fontSize: '13px', fontWeight: 700, color: '#2e6b3f' },
+  closedBannerText: { fontSize: '12px', color: '#6a6d6c', marginTop: '3px', lineHeight: 1.45 },
   card: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    border: '1px solid #e8e6e1',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+    backgroundColor: '#fbfaf6',
+    borderRadius: '6px',
+    border: '1px solid #e8e4da',
+    boxShadow: 'none',
     padding: '18px 20px',
     marginBottom: '16px'
   },
@@ -1143,8 +1104,9 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '16px',
     marginBottom: '14px'
   },
-  cardTitle: { fontSize: '15px', fontWeight: 700, margin: 0, color: '#171717' },
-  cardHint: { fontSize: '12px', color: '#737373', margin: '3px 0 0', lineHeight: 1.4 },
+  cardTitle: { fontSize: '15px', fontWeight: 700, margin: 0, color: '#14181b' },
+  cardHint: { fontSize: '12px', color: '#6a6d6c', margin: '3px 0 0', lineHeight: 1.4 },
+  filtersSection: { marginBottom: '20px' },
   filterIcon: {
     width: '30px',
     height: '30px',
@@ -1158,32 +1120,44 @@ const styles: Record<string, React.CSSProperties> = {
   filterGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-    gap: '12px'
+    gap: '24px'
   },
-  field: { display: 'flex', flexDirection: 'column', gap: '5px' },
-  label: { fontSize: '11px', fontWeight: 600, color: '#525252', letterSpacing: '0.2px' },
+  field: { display: 'flex', flexDirection: 'column', gap: '4px' },
+  label: {
+    fontSize: '10px',
+    fontWeight: 700,
+    color: '#6a6d6c',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase'
+  },
   input: {
-    padding: '8px 10px',
+    padding: '6px 0',
     fontSize: '13px',
-    border: '1px solid #d6d3cd',
-    borderRadius: '7px',
-    backgroundColor: '#ffffff',
-    color: '#171717',
+    border: 'none',
+    borderBottom: '1px solid #d7d1c4',
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+    color: '#14181b',
     outline: 'none',
     minWidth: 0
   },
   inputDisabled: {
-    backgroundColor: '#f5f4f1',
-    color: '#8a8a8a',
-    cursor: 'not-allowed'
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    color: '#14181b',
+    opacity: 1,
+    cursor: 'default',
+    paddingLeft: 0,
+    paddingRight: 0,
+    appearance: 'none'
   },
   kpiGrid: { marginBottom: '16px' },
   kpiCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    border: '1px solid #e8e6e1',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-    padding: '14px 14px 12px',
+    backgroundColor: '#fbfaf6',
+    borderRadius: '6px',
+    border: '1px solid #e8e4da',
+    boxShadow: 'none',
+    padding: '14px 16px',
     minWidth: 0
   },
   kpiIcon: {
@@ -1198,20 +1172,20 @@ const styles: Record<string, React.CSSProperties> = {
   kpiLabel: {
     fontSize: '10px',
     fontWeight: 700,
-    color: '#737373',
+    color: '#6a6d6c',
     textTransform: 'uppercase',
-    letterSpacing: '0.45px'
+    letterSpacing: '0.55px'
   },
   kpiValue: {
-    fontSize: '20px',
-    fontWeight: 700,
-    color: '#171717',
-    marginTop: '3px',
+    fontSize: '22px',
+    fontWeight: 600,
+    color: '#14181b',
+    marginTop: '5px',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis'
   },
-  kpiDetail: { fontSize: '10px', color: '#9a9a9a', marginTop: '2px' },
+  kpiDetail: { fontSize: '10px', color: '#8b8e89', marginTop: '3px' },
   cuadreGrid: { display: 'grid' },
   cuadreMain: { minWidth: 0 },
   moneyGrid: {
@@ -1220,45 +1194,52 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '10px'
   },
   moneyBox: {
-    border: '1px solid #e8e6e1',
-    borderRadius: '9px',
-    padding: '11px 12px',
+    border: 'none',
+    borderRadius: 0,
+    padding: 0,
     display: 'flex',
     flexDirection: 'column',
     gap: '3px',
-    backgroundColor: '#fcfcfa',
+    backgroundColor: 'transparent',
     minWidth: 0
   },
-  moneyBoxAlert: { backgroundColor: '#fff6f5', borderColor: '#f3c0bb' },
-  moneyBoxOk: { backgroundColor: '#f7fbf8', borderColor: '#c7e3d0' },
-  moneyLabel: { fontSize: '10px', fontWeight: 700, color: '#737373', textTransform: 'uppercase' },
-  moneyValue: { fontSize: '19px', fontWeight: 700, color: '#171717' },
-  moneyHelp: { fontSize: '10px', color: '#9a9a9a' },
+  moneyBoxAlert: { backgroundColor: 'transparent' },
+  moneyBoxOk: { backgroundColor: 'transparent' },
+  moneyLabel: {
+    fontSize: '10px',
+    fontWeight: 700,
+    color: '#6a6d6c',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  },
+  moneyValue: { fontSize: '20px', fontWeight: 600, color: '#14181b' },
+  moneyHelp: { fontSize: '10px', color: '#8b8e89' },
   moneyInputWrap: {
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
-    border: '1px solid #d6d3cd',
-    borderRadius: '7px',
-    backgroundColor: '#ffffff',
-    padding: '0 9px'
+    border: 'none',
+    borderBottom: '1px solid #d7d1c4',
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+    padding: '0'
   },
-  moneyInputDisabled: { backgroundColor: '#f5f4f1' },
-  currencyPrefix: { fontSize: '13px', color: '#737373', fontWeight: 600 },
+  moneyInputDisabled: { backgroundColor: 'transparent', borderColor: 'transparent' },
+  currencyPrefix: { fontSize: '13px', color: '#6a6d6c', fontWeight: 600 },
   moneyInput: {
     border: 'none',
     outline: 'none',
     background: 'transparent',
-    padding: '7px 0',
+    padding: '6px 0',
     fontSize: '17px',
-    fontWeight: 700,
-    color: '#171717',
+    fontWeight: 600,
+    color: '#14181b',
     width: '100%',
     minWidth: 0
   },
   observationBlock: {
-    marginTop: '12px',
-    borderTop: '1px solid #efede9',
+    marginTop: '14px',
+    borderTop: '1px solid #e8e4da',
     paddingTop: '12px'
   },
   observationLabelRow: {
@@ -1271,10 +1252,11 @@ const styles: Record<string, React.CSSProperties> = {
   requiredBadge: {
     fontSize: '10px',
     fontWeight: 700,
-    color: '#a61b1b',
-    backgroundColor: '#fde8e8',
-    borderRadius: '999px',
-    padding: '2px 8px'
+    color: '#b3261e',
+    backgroundColor: 'transparent',
+    border: '1px solid #e0c4c0',
+    borderRadius: '4px',
+    padding: '1px 7px'
   },
   textarea: {
     width: '100%',
@@ -1283,10 +1265,10 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '9px 10px',
     fontSize: '12px',
     lineHeight: 1.45,
-    border: '1px solid #d6d3cd',
-    borderRadius: '7px',
-    backgroundColor: '#ffffff',
-    color: '#171717',
+    border: '1px solid #d7d1c4',
+    borderRadius: '4px',
+    backgroundColor: 'transparent',
+    color: '#14181b',
     outline: 'none',
     fontFamily: 'inherit'
   },
@@ -1295,29 +1277,29 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     gap: '12px',
     fontSize: '10px',
-    color: '#9a9a9a',
+    color: '#8b8e89',
     marginTop: '4px'
   },
   inlineError: {
     marginTop: '10px',
-    backgroundColor: '#fff6f5',
-    border: '1px solid #f3c0bb',
-    color: '#a61b1b',
-    borderRadius: '8px',
+    backgroundColor: '#fbf3f1',
+    border: '1px solid #e0c4c0',
+    color: '#b3261e',
+    borderRadius: '4px',
     padding: '9px 11px',
     fontSize: '12px'
   },
   cuadreAside: {
-    backgroundColor: '#faf9f6',
-    border: '1px solid #e8e6e1',
-    borderRadius: '9px',
+    backgroundColor: '#f5f2ec',
+    border: '1px solid #e8e4da',
+    borderRadius: '4px',
     padding: '14px',
     alignSelf: 'start'
   },
   asideTitle: {
     fontSize: '12px',
     fontWeight: 700,
-    color: '#171717',
+    color: '#14181b',
     marginBottom: '9px'
   },
   asideRow: {
@@ -1325,28 +1307,28 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     gap: '10px',
     fontSize: '11px',
-    color: '#6b6b6b',
+    color: '#6a6d6c',
     padding: '4px 0'
   },
-  asideDivider: { borderTop: '1px solid #e5e2dc', margin: '6px 0' },
+  asideDivider: { borderTop: '1px solid #e8e4da', margin: '6px 0' },
   asideNote: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '7px',
     marginTop: '12px',
     paddingTop: '10px',
-    borderTop: '1px solid #e5e2dc',
+    borderTop: '1px solid #e8e4da',
     fontSize: '10px',
-    color: '#6b7280',
+    color: '#8b8e89',
     lineHeight: 1.4
   },
   countBadge: {
     minWidth: '26px',
     height: '26px',
     padding: '0 8px',
-    borderRadius: '999px',
-    backgroundColor: '#eef1ec',
-    color: '#1E3A2B',
+    borderRadius: '4px',
+    backgroundColor: '#f3f0e8',
+    color: '#6a6d6c',
     fontSize: '11px',
     fontWeight: 700,
     display: 'inline-flex',
@@ -1359,37 +1341,37 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'left',
     fontSize: '10px',
     fontWeight: 700,
-    color: '#8a8a8a',
-    letterSpacing: '0.4px',
+    color: '#6a6d6c',
+    letterSpacing: '0.5px',
     padding: '8px 10px',
-    borderBottom: '1px solid #e8e6e1',
-    backgroundColor: '#fbfbf9',
+    borderBottom: '1px solid #d7d1c4',
+    backgroundColor: 'transparent',
     whiteSpace: 'nowrap'
   },
   td: {
     padding: '10px',
-    borderBottom: '1px solid #f0eeea',
-    color: '#262626',
+    borderBottom: '1px solid #e8e4da',
+    color: '#14181b',
     verticalAlign: 'middle'
   },
   emptyCell: {
     padding: '28px 10px',
     textAlign: 'center',
-    color: '#9a9a9a',
+    color: '#8b8e89',
     fontSize: '12px'
   },
-  rowCancelled: { opacity: 0.72 },
+  rowCancelled: { opacity: 0.65 },
   methodBadge: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
-    borderRadius: '999px',
-    padding: '3px 9px',
+    borderRadius: '4px',
+    padding: '2px 8px',
     fontSize: '11px',
     fontWeight: 600,
     whiteSpace: 'nowrap'
   },
-  methodDot: { width: '6px', height: '6px', borderRadius: '999px' },
+  methodDot: { width: '5px', height: '5px', borderRadius: '999px' },
   actionRow: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -1402,12 +1384,12 @@ const styles: Record<string, React.CSSProperties> = {
   secondaryBtn: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '7px',
-    backgroundColor: '#ffffff',
-    color: '#1E3A2B',
-    border: '1px solid #cfd8d0',
-    borderRadius: '8px',
-    padding: '9px 14px',
+    gap: '6px',
+    backgroundColor: '#fbfaf6',
+    color: '#2e6b3f',
+    border: '1px solid #d7d1c4',
+    borderRadius: '4px',
+    padding: '7px 12px',
     fontSize: '12px',
     fontWeight: 600,
     cursor: 'pointer'
@@ -1416,44 +1398,44 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '8px',
-    backgroundColor: '#1E3A2B',
+    backgroundColor: '#2e6b3f',
     color: '#ffffff',
-    border: '1px solid #1E3A2B',
-    borderRadius: '8px',
-    padding: '10px 18px',
+    border: '1px solid #2e6b3f',
+    borderRadius: '4px',
+    padding: '9px 16px',
     fontSize: '12px',
     fontWeight: 700,
     cursor: 'pointer'
   },
-  primaryBtnDisabled: { opacity: 0.55, cursor: 'not-allowed' },
+  primaryBtnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
   closedAction: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
     flexWrap: 'wrap',
-    justifyContent: 'flex-end'
+    justifyContent: 'flex-start'
   },
   closedActionBadge: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '7px',
-    backgroundColor: '#eef1ec',
-    color: '#4b5a4e',
-    border: '1px solid #d7ded8',
-    borderRadius: '8px',
-    padding: '9px 14px',
+    backgroundColor: 'transparent',
+    color: '#6a6d6c',
+    border: '1px solid #d7d1c4',
+    borderRadius: '4px',
+    padding: '7px 12px',
     fontSize: '12px',
     fontWeight: 700
   },
-  closedActionText: { fontSize: '11px', color: '#737373', maxWidth: '330px' },
+  closedActionText: { fontSize: '11px', color: '#8b8e89', maxWidth: '330px' },
   stateBox: {
-    backgroundColor: '#ffffff',
-    border: '1px solid #e8e6e1',
-    borderRadius: '10px',
+    backgroundColor: '#fbfaf6',
+    border: '1px solid #e8e4da',
+    borderRadius: '6px',
     padding: '18px 20px',
     fontSize: '12px',
-    color: '#525252',
+    color: '#6a6d6c',
     marginBottom: '16px'
   },
-  errorBox: { borderColor: '#f3c0bb', backgroundColor: '#fff6f5', color: '#a61b1b' }
+  errorBox: { borderColor: '#e0c4c0', backgroundColor: '#fbf3f1', color: '#b3261e' }
 };

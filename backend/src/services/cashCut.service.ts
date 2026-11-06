@@ -196,10 +196,10 @@ export async function getCashCutContext(tenantId: number) {
   };
 }
 
-export async function getScopeNames(scope: ScopeInput) {
+export async function getScopeNames(scope: ScopeInput, allowUnassigned = false) {
   const [branch, cashier] = await Promise.all([
     prisma.branch.findFirst({ where: { id: scope.branchId, tenantId: scope.tenantId } }),
-    prisma.user.findFirst({
+    allowUnassigned && scope.cashierId === 0 ? { id: 0, fullName: 'Sin asignar' } : prisma.user.findFirst({
       where: { id: scope.cashierId, tenantId: scope.tenantId },
       select: { id: true, fullName: true, role: true }
     })
@@ -218,7 +218,7 @@ export async function computeLiveSummary(scope: ScopeInput) {
     where: {
       tenantId: scope.tenantId,
       branchId: scope.branchId,
-      cashierId: scope.cashierId,
+      cashierId: scope.cashierId === 0 ? null : scope.cashierId,
       createdAt: { gte: start, lt: end }
     },
     include: {
@@ -319,12 +319,12 @@ function parseSnapshot(value: string | null): CashCutSnapshot | null {
 }
 
 export async function getCashCutSummary(scope: ScopeInput) {
-  const { branch, cashier } = await getScopeNames(scope);
+  const { branch, cashier } = await getScopeNames(scope, true);
   const cutDate = parseDateOnly(scope.date);
   const config = SHIFT_CATALOG[scope.shift];
   const { start, end } = resolvePeriod(scope.date, scope.shift);
 
-  const existingCut = await prisma.cashCut.findUnique({
+  const existingCut = scope.cashierId === 0 ? null : await prisma.cashCut.findUnique({
     where: {
       uq_cash_cut_scope: {
         tenantId: scope.tenantId,

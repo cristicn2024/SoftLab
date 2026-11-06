@@ -327,7 +327,7 @@ export const CashCutPage: React.FC = () => {
   }, [actualizarSesion, branchId, context, data]);
 
   useEffect(() => {
-    if (!branchId || !cashierId || !date) return;
+    if (!branchId || !date) return;
     let active = true;
 
     setLoading(true);
@@ -403,7 +403,7 @@ export const CashCutPage: React.FC = () => {
   };
 
   const handleClose = async () => {
-    if (!data || closed || closing) return;
+    if (!data || !cashierId || closed || closing) return;
 
     if (countedNumber === null || Number.isNaN(countedNumber) || countedNumber < 0) {
       setCloseError('Captura un efectivo contado válido (mayor o igual a cero).');
@@ -968,13 +968,13 @@ export const CashCutPage: React.FC = () => {
                         type="button"
                         style={{
                           ...styles.primaryBtn,
-                          ...(closing || countedNumber === null ? styles.primaryBtnDisabled : {})
+                          ...(!cashierId || closing || countedNumber === null ? styles.primaryBtnDisabled : {})
                         }}
                         onClick={handleClose}
-                        disabled={closing || countedNumber === null}
+                        disabled={!cashierId || closing || countedNumber === null}
                       >
                         <Icon name="lock" size={16} color="#ffffff" />
-                        {closing ? 'Cerrando corte...' : 'Cerrar corte'}
+                        {!cashierId ? 'Se requiere cajero para cerrar' : closing ? 'Cerrando corte...' : 'Cerrar corte'}
                       </button>
                     )}
                   </div>

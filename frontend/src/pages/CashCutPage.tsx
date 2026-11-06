@@ -574,12 +574,15 @@ export const CashCutPage: React.FC = () => {
               <section style={styles.filtersSection} className="no-print">
                 <div style={styles.filterGrid}>
                   <div style={styles.field}>
-                    <label style={styles.label}>Sucursal</label>
+                    <label style={styles.label} htmlFor="cash-cut-branch">
+                      Sucursal
+                    </label>
                     <select
-                      style={{ ...styles.input, ...(closed ? styles.inputDisabled : {}) }}
+                      id="cash-cut-branch"
+                      style={styles.input}
                       value={branchId}
                       onChange={event => handleBranchChange(event.target.value)}
-                      disabled={closed || contextLoading}
+                      disabled={contextLoading}
                     >
                       {(context?.branches ?? []).map(branch => (
                         <option key={branch.id} value={branch.id}>
@@ -590,15 +593,18 @@ export const CashCutPage: React.FC = () => {
                   </div>
 
                   <div style={styles.field}>
-                    <label style={styles.label}>Cajero</label>
+                    <label style={styles.label} htmlFor="cash-cut-cashier">
+                      Cajero
+                    </label>
                     <select
-                      style={{ ...styles.input, ...(closed ? styles.inputDisabled : {}) }}
+                      id="cash-cut-cashier"
+                      style={styles.input}
                       value={cashierId}
                       onChange={event => {
                         resetDraft();
                         setCashierId(Number(event.target.value));
                       }}
-                      disabled={closed || contextLoading}
+                      disabled={contextLoading}
                     >
                       {availableCashiers.map(cashier => (
                         <option key={cashier.id} value={cashier.id}>
@@ -609,15 +615,18 @@ export const CashCutPage: React.FC = () => {
                   </div>
 
                   <div style={styles.field}>
-                    <label style={styles.label}>Turno</label>
+                    <label style={styles.label} htmlFor="cash-cut-shift">
+                      Turno
+                    </label>
                     <select
-                      style={{ ...styles.input, ...(closed ? styles.inputDisabled : {}) }}
+                      id="cash-cut-shift"
+                      style={styles.input}
                       value={shift}
                       onChange={event => {
                         resetDraft();
                         setShift(event.target.value as 'matutino' | 'vespertino' | 'nocturno');
                       }}
-                      disabled={closed || contextLoading}
+                      disabled={contextLoading}
                     >
                       {(context?.shifts ?? []).map(option => (
                         <option key={option.value} value={option.value}>
@@ -628,16 +637,19 @@ export const CashCutPage: React.FC = () => {
                   </div>
 
                   <div style={styles.field}>
-                    <label style={styles.label}>Fecha</label>
+                    <label style={styles.label} htmlFor="cash-cut-date">
+                      Fecha
+                    </label>
                     <input
+                      id="cash-cut-date"
                       type="date"
-                      style={{ ...styles.input, ...(closed ? styles.inputDisabled : {}) }}
+                      style={styles.input}
                       value={date}
                       onChange={event => {
                         resetDraft();
                         setDate(event.target.value);
                       }}
-                      disabled={closed || contextLoading}
+                      disabled={contextLoading}
                     />
                   </div>
                 </div>

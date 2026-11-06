@@ -194,10 +194,33 @@ describe('Pantalla de corte de caja (frontend)', () => {
     expect(screen.getAllByText('Cajero').length).toBeGreaterThan(0);
     const selectores = screen.getAllByRole('combobox');
     expect(selectores).toHaveLength(3);
-    selectores.forEach((selector) => expect(selector).toBeDisabled());
+    selectores.forEach((selector) => expect(selector).not.toBeDisabled());
     expect(screen.getByText('La observación quedó congelada con el cierre.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Cerrar corte/i })).not.toBeInTheDocument();
     expect(screen.getByText(/Solo lectura · consulta el consolidado/)).toBeInTheDocument();
+  });
+
+  it('permite cambiar los filtros aunque el corte esté cerrado', async () => {
+    mockApi(closedSummary);
+
+    renderPage();
+    await screen.findByText('Corte cerrado · Sucursal Norte · Matutino');
+
+    expect(screen.getByLabelText('Sucursal')).toBeEnabled();
+    expect(screen.getByLabelText('Cajero')).toBeEnabled();
+    expect(screen.getByLabelText('Turno')).toBeEnabled();
+    expect(screen.getByLabelText('Fecha')).toBeEnabled();
+
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-01-16' } });
+
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(
+        '/cash-cuts/summary',
+        expect.objectContaining({
+          params: expect.objectContaining({ date: '2026-01-16' }),
+        }),
+      ),
+    );
   });
 
   it('muestra el error cuando no se puede cargar el contexto de caja', async () => {

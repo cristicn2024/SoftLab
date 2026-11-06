@@ -16,10 +16,18 @@ async function main() {
     // El frontend actual utiliza el laboratorio 1. No reemplazar su configuración.
     const tenant = await tx.tenant.upsert({
       where: { id: 1 }, update: {},
-      create: { id: 1, name: 'Laboratorio Demo HU 5.5', subdomain: 'demo-hu55' },
+      create: { id: 1, name: 'Laboratorio Demo', subdomain: 'demo-hu55' },
     });
+    if (tenant.subdomain === 'demo-hu55') {
+      await tx.tenant.updateMany({
+        where: { id: tenant.id, name: 'Laboratorio Demo HU 5.5' }, data: { name: 'Laboratorio Demo' },
+      });
+      await tx.branch.updateMany({
+        where: { tenantId: tenant.id, name: 'Sucursal Demo HU 5.5' }, data: { name: 'Sucursal Demo' },
+      });
+    }
     const branch = await tx.branch.findFirst({ where: { tenantId: tenant.id }, orderBy: { id: 'asc' } })
-      ?? await tx.branch.create({ data: { tenantId: tenant.id, name: 'Sucursal Demo HU 5.5' } });
+      ?? await tx.branch.create({ data: { tenantId: tenant.id, name: 'Sucursal Demo' } });
     const test = await tx.testCatalog.upsert({
       where: { uq_tenant_test_code: { tenantId: tenant.id, code: 'DEMO-HU55' } }, update: {},
       create: { tenantId: tenant.id, code: 'DEMO-HU55', name: 'Glucosa demo HU 5.5', price: 500,

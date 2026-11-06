@@ -1,7 +1,21 @@
-import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import type { ContextoSeed } from './contexto';
 
-const prisma = new PrismaClient();
+interface PagoDemo {
+  method: 'cash' | 'card' | 'transfer';
+  amount: number;
+}
+
+interface OrdenDemo {
+  folio: string;
+  hour: number;
+  minute: number;
+  total: number;
+  discount: number;
+  status: 'completed' | 'pending' | 'cancelled';
+  testCode: string;
+  payments: PagoDemo[];
+}
 
 function dateOnly(date: Date) {
   return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -11,33 +25,7 @@ function at(date: Date, hour: number, minute: number) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute, 0, 0);
 }
 
-async function main() {
-  const tenant = await prisma.tenant.upsert({
-    where: { subdomain: 'central' },
-    update: { name: 'Laboratorio Santa Lucía', status: 'active' },
-    create: {
-      name: 'Laboratorio Santa Lucía',
-      subdomain: 'central',
-      status: 'active'
-    }
-  });
-
-  const branch =
-    (await prisma.branch.findFirst({ where: { tenantId: tenant.id }, orderBy: { id: 'asc' } })) ??
-    (await prisma.branch.create({
-      data: {
-        tenantId: tenant.id,
-        name: 'Clínica Central',
-        address: 'Av. Principal 100',
-        phone: '555-0100'
-      }
-    }));
-
-  await prisma.branch.update({
-    where: { id: branch.id },
-    data: { name: 'Clínica Central' }
-  });
-
+export async function sembrarCorteCaja(prisma: PrismaClient, { tenant, branch }: ContextoSeed) {
   let secondBranch = await prisma.branch.findFirst({
     where: { tenantId: tenant.id, name: 'Clínica Norte' }
   });
@@ -180,7 +168,7 @@ async function main() {
     }
   });
 
-  const demoOrders = [
+  const demoOrders: OrdenDemo[] = [
     {
       folio: 'ORD-CORTE-0001',
       hour: 8,
@@ -303,12 +291,3 @@ async function main() {
     `  efectivo=${cashTotal} tarjeta=${cardTotal} transferencia=${transferTotal} ordenes=${demoOrders.length}`
   );
 }
-
-main()
-  .catch(error => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });

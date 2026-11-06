@@ -12,8 +12,6 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      # Ejecuta el schema.sql automáticamente al iniciar el contenedor por primera vez
-      - ./backend/src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-78357Cas}"]
       interval: 5s
@@ -24,6 +22,7 @@ services:
     build: ./backend
     container_name: softlab_backend
     restart: unless-stopped
+    command: sh -c "npm run db:preparar && npm start"
     environment:
       PORT: 4000
       DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:-78357Cas}@db:3306/softlab_db

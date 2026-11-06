@@ -1,8 +1,16 @@
-require('dotenv/config');
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
+import type { ContextoSeed } from './contexto';
 
-const prisma = new PrismaClient();
-const scenarios = [
+interface Escenario {
+  key: string;
+  name: string;
+  status?: 'cancelled';
+  discount?: number;
+  payments: Array<{ amount: number; cancelled?: boolean }>;
+  balance: number;
+}
+
+const scenarios: Escenario[] = [
   { key: 'sin-pago', name: 'Sin pago', payments: [], balance: 500 },
   { key: 'pago-parcial', name: 'Pago parcial', payments: [{ amount: 200 }], balance: 300 },
   { key: 'liquidada', name: 'Liquidada', payments: [{ amount: 500 }], balance: 0 },
@@ -11,23 +19,8 @@ const scenarios = [
   { key: 'orden-cancelada', name: 'Orden cancelada', status: 'cancelled', payments: [{ amount: 500 }], balance: 0 },
 ];
 
-async function main() {
+export async function sembrarHu55(prisma: PrismaClient, { tenant, branch }: ContextoSeed) {
   const rows = await prisma.$transaction(async tx => {
-    // El frontend actual utiliza el laboratorio 1. No reemplazar su configuración.
-    const tenant = await tx.tenant.upsert({
-      where: { id: 1 }, update: {},
-      create: { id: 1, name: 'Laboratorio Demo', subdomain: 'demo-hu55' },
-    });
-    if (tenant.subdomain === 'demo-hu55') {
-      await tx.tenant.updateMany({
-        where: { id: tenant.id, name: 'Laboratorio Demo HU 5.5' }, data: { name: 'Laboratorio Demo' },
-      });
-      await tx.branch.updateMany({
-        where: { tenantId: tenant.id, name: 'Sucursal Demo HU 5.5' }, data: { name: 'Sucursal Demo' },
-      });
-    }
-    const branch = await tx.branch.findFirst({ where: { tenantId: tenant.id }, orderBy: { id: 'asc' } })
-      ?? await tx.branch.create({ data: { tenantId: tenant.id, name: 'Sucursal Demo' } });
     const test = await tx.testCatalog.upsert({
       where: { uq_tenant_test_code: { tenantId: tenant.id, code: 'DEMO-HU55' } }, update: {},
       create: { tenantId: tenant.id, code: 'DEMO-HU55', name: 'Glucosa demo HU 5.5', price: 500,
@@ -40,7 +33,7 @@ async function main() {
         footerText: 'Datos ficticios para pruebas de entrega de resultados.',
       } });
     }
-    const rows = [];
+    const rows: Array<Record<string, unknown>> = [];
     for (const scenario of scenarios) {
       // Marcador estable, sin IDs fijos de órdenes ni cambios en pacientes reales.
       const email = `hu55.${scenario.key}@example.invalid`;
@@ -83,10 +76,5 @@ async function main() {
     return rows;
   }, { timeout: 30000 });
   console.table(rows);
-  console.log('Laboratorio: 1. Las órdenes existentes no se reinician. Consulta el saldo actual en Cobro.');
+  console.log(`Laboratorio: ${tenant.id}. Las órdenes existentes no se reinician. Consulta el saldo actual en Cobro.`);
 }
-
-main().catch(error => {
-  console.error('No se pudo cargar el seed HU 5.5:', error.message);
-  process.exitCode = 1;
-}).finally(() => prisma.$disconnect());

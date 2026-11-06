@@ -1,14 +1,9 @@
-import { PrismaClient, Prisma } from '@prisma/client'
-import 'dotenv/config'
+import { Prisma, PrismaClient } from '@prisma/client'
+import type { ContextoSeed } from './contexto'
 
-const prisma = new PrismaClient()
 const decimal = (value: number) => new Prisma.Decimal(value)
 
-async function main() {
-  let tenant = await prisma.tenant.findFirst({ where: { name: 'Laboratorio Santa Lucía' } })
-  if (!tenant) tenant = await prisma.tenant.create({ data: { name: 'Laboratorio Santa Lucía', subdomain: 'santa-lucia-hu' } })
-  let branch = await prisma.branch.findFirst({ where: { tenantId: tenant.id, name: 'Clínica Central' } })
-  if (!branch) branch = await prisma.branch.create({ data: { tenantId: tenant.id, name: 'Clínica Central' } })
+export async function sembrarHu5262(prisma: PrismaClient, { tenant, branch }: ContextoSeed) {
   const ensureUser = async (name: string, role: 'admin' | 'chemist', address: string) => {
     const equivalent = await prisma.user.findFirst({ where: { tenantId: tenant.id, fullName: name } })
     if (equivalent) return equivalent
@@ -83,6 +78,7 @@ async function main() {
   if (!(await prisma.sample.findFirst({ where: { orderId: order.id } }))) await prisma.sample.create({ data: { tenantId: tenant.id, orderId: order.id, barcode: 'SL-261020-0057-AMARILLO', status: 'received', collectedAt: new Date('2026-10-20T09:58:00'), receivedAt: new Date('2026-10-20T09:58:00'), sampleDescription: 'Suero · tubo amarillo', equipment: 'Analizador químico AQ-2', capturedByName: analyst.fullName } })
   const current: Record<string, string> = { 'Glucosa en ayuno': '98', 'Colesterol total': '186', 'Triglicéridos': '238', 'Colesterol HDL': '52', 'Colesterol LDL (calculado)': '86', 'Colesterol VLDL (calculado)': '47.6' }
   for (const item of await prisma.orderItem.findMany({ where: { orderId: order.id }, include: { test: { include: { parameters: true } } } })) {
+    if (!item.test) continue
     for (const parameter of item.test.parameters) {
       const value = current[parameter.name]
       if (!value) continue
@@ -92,5 +88,3 @@ async function main() {
   }
   console.log(`HU seed ready: ${tenant.name}; user ${analyst.fullName}; order ${order.folio}. Existing rows reused; missing rows created.`)
 }
-
-main().catch((error) => { console.error(error); process.exitCode = 1 }).finally(() => prisma.$disconnect())

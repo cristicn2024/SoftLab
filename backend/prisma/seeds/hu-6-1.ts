@@ -1,7 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import 'dotenv/config';
-
-const prisma = new PrismaClient();
+import type { ContextoSeed } from './contexto';
 
 type DemoOrder = {
   folio: string;
@@ -56,7 +54,7 @@ function birthDateFor(ageYears: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
-async function seedDemoOrder(tenantId: number, branchId: number, demo: DemoOrder) {
+async function seedDemoOrder(prisma: PrismaClient, tenantId: number, branchId: number, demo: DemoOrder) {
   let patient = await prisma.patient.findFirst({
     where: { tenantId, firstName: demo.firstName, lastName: demo.lastName },
   });
@@ -77,7 +75,7 @@ async function seedDemoOrder(tenantId: number, branchId: number, demo: DemoOrder
     where: { tenantId, code: { in: demo.testCodes } },
   });
   if (tests.length !== demo.testCodes.length) {
-    throw new Error('Faltan estudios en el catálogo. Corre primero: npm run seed:hu-5-2-6-2');
+    throw new Error('Faltan estudios en el catálogo de la HU 5.2/6.2.');
   }
 
   let total = 0;
@@ -139,35 +137,11 @@ async function seedDemoOrder(tenantId: number, branchId: number, demo: DemoOrder
   }
 }
 
-async function main() {
-  const tenant = await prisma.tenant.findFirst({ where: { name: 'Laboratorio Santa Lucía' } });
-  if (!tenant) {
-    throw new Error('No existe el laboratorio de prueba. Corre primero: npm run seed:hu-5-2-6-2');
-  }
-  const branch = await prisma.branch.findFirst({
-    where: { tenantId: tenant.id, name: 'Clínica Central' },
-  });
-  if (!branch) {
-    throw new Error('No existe la sucursal de prueba. Corre primero: npm run seed:hu-5-2-6-2');
-  }
-
+export async function sembrarHu61(prisma: PrismaClient, { tenant, branch }: ContextoSeed) {
   for (const demo of DEMO_ORDERS) {
-    await seedDemoOrder(tenant.id, branch.id, demo);
+    await seedDemoOrder(prisma, tenant.id, branch.id, demo);
   }
 
   console.log(`Seed HU 6.1 listo. Laboratorio "${tenant.name}" con id ${tenant.id}.`);
   console.log('Si ese id no es 1, cambia x-tenant-id en frontend/src/services/api.ts');
 }
-
-async function run() {
-  try {
-    await main();
-  } catch (error) {
-    console.error(error);
-    process.exitCode = 1;
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
-run();

@@ -177,13 +177,13 @@ export async function getCashCutContext(tenantId: number) {
       select: { id: true, fullName: true, role: true, branchId: true }
     }));
 
-  if (!currentUser) throw new CashCutNotFoundError('No hay usuarios registrados');
+
 
   return {
     tenant: { id: tenant.id, name: tenant.name, subdomain: tenant.subdomain },
     currentUser,
     branches,
-    cashiers: users.length > 0 ? users : [currentUser],
+    cashiers: users.length > 0 ? users : currentUser ? [currentUser] : [],
     shifts: (Object.keys(SHIFT_CATALOG) as CashCutShiftValue[]).map(value => ({
       value,
       ...SHIFT_CATALOG[value]

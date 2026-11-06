@@ -22,7 +22,7 @@ interface ShiftOption {
 
 interface CashCutContext {
   tenant: { id: number; name: string; subdomain: string };
-  currentUser: CashierOption;
+  currentUser: CashierOption | null;
   branches: BranchOption[];
   cashiers: CashierOption[];
   shifts: ShiftOption[];
@@ -283,9 +283,9 @@ export const CashCutPage: React.FC = () => {
         setContextError('');
 
         const branch =
-          ctx.branches.find(item => item.id === ctx.currentUser.branchId) ?? ctx.branches[0];
+          ctx.branches.find(item => item.id === ctx.currentUser?.branchId) ?? ctx.branches[0];
         const cashier =
-          ctx.cashiers.find(item => item.id === ctx.currentUser.id) ??
+          ctx.cashiers.find(item => item.id === ctx.currentUser?.id) ??
           ctx.cashiers.find(item => item.role === 'receptionist') ??
           ctx.cashiers[0];
 
@@ -310,8 +310,8 @@ export const CashCutPage: React.FC = () => {
   useEffect(() => {
     if (!context) return;
     const currentBranchName =
-      context.currentUser.branchId !== null
-        ? context.branches.find(item => item.id === context.currentUser.branchId)?.name
+      context.currentUser?.branchId !== null
+        ? context.branches.find(item => item.id === context.currentUser?.branchId)?.name
         : undefined;
     const branch =
       data?.scope.branchName ??
@@ -321,8 +321,8 @@ export const CashCutPage: React.FC = () => {
     actualizarSesion({
       laboratorio: context.tenant.name,
       sucursal: branch ?? 'Clínica Central',
-      usuario: context.currentUser.fullName,
-      rol: context.currentUser.role === 'admin' ? 'Administradora' : 'Cajero'
+      usuario: context.currentUser?.fullName ?? 'Sin asignar',
+      rol: context.currentUser ? (context.currentUser.role === 'admin' ? 'Administradora' : 'Cajero') : 'Sin asignar'
     });
   }, [actualizarSesion, branchId, context, data]);
 
@@ -433,7 +433,7 @@ export const CashCutPage: React.FC = () => {
         },
         {
           headers: {
-            'x-user-id': String(context?.currentUser.id ?? cashierId)
+            'x-user-id': String(context?.currentUser?.id ?? cashierId)
           }
         }
       );
@@ -606,7 +606,7 @@ export const CashCutPage: React.FC = () => {
                       }}
                       disabled={contextLoading}
                     >
-                      {availableCashiers.map(cashier => (
+                      {availableCashiers.length === 0 && <option value={0}>Sin cajeros registrados</option>}{availableCashiers.map(cashier => (
                         <option key={cashier.id} value={cashier.id}>
                           {cashier.fullName}
                         </option>

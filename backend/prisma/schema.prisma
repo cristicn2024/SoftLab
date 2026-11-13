@@ -177,6 +177,8 @@ model Doctor {
 }
 
 model TestCatalog {
+  department String @default("General") @db.VarChar(100)
+  status Boolean @default(true)
   id                Int      @id @default(autoincrement())
   tenantId          Int      @map("tenant_id")
   code              String   @db.VarChar(30)
@@ -612,4 +614,16 @@ model CriticalNotification {
   result TestResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   @@map("critical_notifications")
+}
+model CatalogAudit {
+ id Int @id @default(autoincrement())
+ tenantId Int
+ kind String @db.VarChar(20)
+ itemId Int
+ userName String @db.VarChar(150)
+ createdAt DateTime @default(now())
+ before Json?
+ after Json
+ @@index([tenantId, kind, itemId])
+ @@map("catalog_audit")
 }

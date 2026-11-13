@@ -22,8 +22,8 @@ export const MENU: ElementoMenu[] = [
   {
     etiqueta: 'Catálogo',
     subelementos: [
-      { etiqueta: 'Estudios' },
-      { etiqueta: 'Perfiles' }
+      { etiqueta: 'Estudios', ruta: '/catalogo/estudios' },
+      { etiqueta: 'Perfiles', ruta: '/catalogo/perfiles' }
     ]
   },
   {

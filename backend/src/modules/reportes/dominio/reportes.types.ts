@@ -16,6 +16,8 @@ export interface ReleaseOrder {
 }
 
 export interface ReportItem {
+  unit?: string | null;
+  flag?: string | null;
   testName: string | null;
   profileName: string | null;
   referenceRange: string | null;
@@ -65,7 +67,7 @@ export interface ReportPdfData {
       resultValue: string;
       units: string;
       referenceRange: string;
-      flag: 'NORMAL' | 'HIGH';
+      flag: 'NORMAL' | 'HIGH' | 'LOW' | 'CRITICAL_HIGH' | 'CRITICAL_LOW';
     }[];
   }[];
   qrToken: string;

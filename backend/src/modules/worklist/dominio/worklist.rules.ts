@@ -27,6 +27,8 @@ export function pickRange(ranges: RangeRecord[], gender: string, ageYears: numbe
 }
 
 export function buildRule(range: RangeRecord | null, expected: string | null): RangeRule | null {
+  if (range?.type === 'text') return null;
+  expected = range?.expected ?? expected;
   if (range === null && expected === null) {
     return null;
   }

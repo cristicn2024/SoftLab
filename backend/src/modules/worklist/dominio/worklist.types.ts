@@ -1,6 +1,11 @@
 export type Flag = 'Normal' | 'H' | 'L' | 'HH' | 'LL' | 'A' | '—';
 
 export type RangeRecord = {
+  versionId?: number;
+  method?: string;
+  expected?: string | null;
+  type?: string;
+  unit?: string;
   gender: string | null;
   minAgeYears: number | null;
   maxAgeYears: number | null;
@@ -43,6 +48,8 @@ export type SampleRecord = {
 };
 
 export type OrderRecord = {
+  processedAt?: Date | null;
+  referenceContext?: {processedAt: Date | null;condition:string;weeks:number|null};
   id: number;
   folio: string | null;
   patient: {
@@ -70,6 +77,7 @@ export type RangeRule = {
 };
 
 export type PendingParameter = {
+  reference?: RangeRecord | null;
   orderItemId: number;
   parameterId: number;
   testName: string;
@@ -81,6 +89,7 @@ export type PendingParameter = {
 };
 
 export type WorklistOrder = {
+  referenceContext?: {processedAt: Date | null;condition:string;weeks:number|null};
   orderId: number;
   folio: string;
   receivedAt: Date | null;
@@ -108,7 +117,7 @@ export type ResultEntry = {
   value: string;
 };
 
-export type SaveEntry = ResultEntry & { flag: Flag };
+export type SaveEntry = ResultEntry & { flag: Flag; referenceSnapshot?: string };
 
 export type SavedResult = {
   orderItemId: number;

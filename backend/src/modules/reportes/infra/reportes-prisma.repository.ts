@@ -18,6 +18,17 @@ class PrismaReleaseUnit implements ReleaseUnit {
     private readonly orderId: number,
   ) {}
 
+  async findIssuedPdf(): Promise<Buffer | null> {
+    const report = await this.tx.orderReport.findFirst({ where: { tenantId: this.tenantId, orderId: this.orderId }, orderBy: { id: 'asc' } });
+    return report?.issuedPdf ? Buffer.from(report.issuedPdf, 'base64') : null;
+  }
+
+  async saveIssuedPdf(buffer: Buffer): Promise<void> {
+    const report = await this.tx.orderReport.findFirst({ where: { tenantId: this.tenantId, orderId: this.orderId }, orderBy: { id: 'asc' } });
+    if (!report) throw new Error('Informe no registrado');
+    await this.tx.orderReport.update({ where: { id: report.id }, data: { issuedPdf: buffer.toString('base64') } });
+  }
+
   async findOrder(): Promise<ReleaseOrder | null> {
     const order = await this.tx.order.findFirst({
       where: { id: this.orderId, tenantId: this.tenantId },
@@ -52,7 +63,7 @@ class PrismaReleaseUnit implements ReleaseUnit {
       include: {
         patient: true,
         doctor: true,
-        items: { include: { test: true, profile: true, testResults: true } },
+        items: { include: { test: true, profile: true, testResults: { include: { parameter: true }, orderBy: { id: 'asc' } } } },
         tenant: true,
       },
     });
@@ -60,14 +71,19 @@ class PrismaReleaseUnit implements ReleaseUnit {
 
     const items: ReportItem[] = [];
     for (const item of order.items) {
-      const first = item.testResults[0];
-      items.push({
-        testName: item.test?.name ?? null,
-        profileName: item.profile?.name ?? null,
-        referenceRange: item.test?.referenceRange ?? null,
-        resultValue: first ? first.resultValue : null,
-        isAlert: first ? first.isAlert : false,
-      });
+      const results = item.testResults.length ? item.testResults : [null];
+      for (const result of results) {
+        const snapshot = result?.referenceSnapshot ? JSON.parse(result.referenceSnapshot) : null;
+        items.push({
+          testName: result?.parameter?.name ? `${item.test?.name ?? ''} · ${result.parameter.name}` : item.test?.name ?? null,
+          profileName: item.profile?.name ?? null,
+          referenceRange: snapshot ? snapshot.display ?? null : item.test?.referenceRange ?? null,
+          unit: snapshot ? snapshot.unit ?? '' : result?.parameter?.unit ?? '',
+          flag: result?.flag ?? null,
+          resultValue: result?.resultValue ?? null,
+          isAlert: result?.isAlert ?? false,
+        });
+      }
     }
 
     return {

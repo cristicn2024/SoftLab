@@ -12,6 +12,7 @@ export interface StoredOrder {
   report: ReportOrder;
   qrToken: string | null;
   delivered: Date | null;
+  issuedPdf?: Buffer;
 }
 
 export interface LogEntry {
@@ -94,10 +95,13 @@ export class FakeRepository implements ReportesRepository {
     const logsBefore = this.logs.length;
     const stored = this.stored(tenantId, orderId);
     const tokenBefore = stored ? stored.qrToken : null;
+    const pdfBefore = stored?.issuedPdf;
     const deliveredBefore = stored ? stored.delivered : null;
     const repository = this;
 
     const unit: ReleaseUnit = {
+      async findIssuedPdf() { return stored?.issuedPdf ?? null; },
+      async saveIssuedPdf(buffer) { if(stored) stored.issuedPdf = buffer; },
       async findOrder() {
         return stored ? stored.release : null;
       },
@@ -126,6 +130,7 @@ export class FakeRepository implements ReportesRepository {
       if (stored) {
         stored.qrToken = tokenBefore;
         stored.delivered = deliveredBefore;
+        stored.issuedPdf = pdfBefore;
       }
       throw error;
     }

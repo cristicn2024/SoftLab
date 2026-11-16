@@ -31,7 +31,7 @@ function hasResult(capturedParameterIds: number[], parameterId: number): boolean
 }
 
 function buildOrder(record: OrderRecord, today: Date): WorklistOrder {
-  const ageYears = calculateAge(record.patient.birthDate, today);
+  const ageYears = calculateAge(record.patient.birthDate, record.processedAt ?? today);
   const pending: PendingParameter[] = [];
   let capturedCount = 0;
 
@@ -52,7 +52,8 @@ function buildOrder(record: OrderRecord, today: Date): WorklistOrder {
         parameterId: parameter.id,
         testName: item.testName,
         parameterName: parameter.name,
-        unit: parameter.unit,
+        unit: range?.unit ?? parameter.unit,
+        reference: range,
         rangeText: describeRange(range, parameter.qualitativeExpected),
         previous: describePrevious(parameter.previousValue, parameter.previousDate),
         rule: buildRule(range, parameter.qualitativeExpected),
@@ -76,6 +77,7 @@ function buildOrder(record: OrderRecord, today: Date): WorklistOrder {
   }
 
   return {
+    referenceContext: record.referenceContext,
     orderId: record.id,
     folio: buildFolio(record.folio, record.id),
     receivedAt,
@@ -182,6 +184,7 @@ export class WorklistService {
         parameterId: parameter.parameterId,
         value: prepared.value,
         flag,
+        referenceSnapshot: JSON.stringify({ display: parameter.rangeText, unit: parameter.unit, rule: parameter.rule, reference: parameter.reference, processedAt: order.referenceContext?.processedAt?.toISOString() ?? today.toISOString(), condition: order.referenceContext?.condition ?? '', weeks: order.referenceContext?.weeks ?? null }),
       });
     }
 

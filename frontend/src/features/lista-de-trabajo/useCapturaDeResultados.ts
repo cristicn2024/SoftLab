@@ -45,6 +45,12 @@ export function useCapturaDeResultados(idOrden: number) {
     }
   }, [idOrden])
 
+  async function recargarContexto() {
+    const orden = await obtenerOrden(idOrden)
+    setEstado({ cargando: false, orden, error: '' })
+    setValores({})
+  }
+
   function cambiarValor(clave: string, texto: string) {
     setValores({ ...valores, [clave]: texto })
     if (mensaje !== '') setMensaje('')
@@ -103,5 +109,5 @@ export function useCapturaDeResultados(idOrden: number) {
     }
   }
 
-  return { estado, valores, guardando, mensaje, aviso, cambiarValor, guardar, volverALista }
+  return { recargarContexto, estado, valores, guardando, mensaje, aviso, cambiarValor, guardar, volverALista }
 }

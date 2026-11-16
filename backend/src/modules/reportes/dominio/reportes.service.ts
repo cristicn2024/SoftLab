@@ -51,9 +51,9 @@ export function buildPdfData(
     items.push({
       testName: item.testName ?? item.profileName ?? 'Concepto sin nombre',
       resultValue: item.resultValue || 'N/A',
-      units: 'mg/dL',
+      units: item.unit ?? '',
       referenceRange: item.referenceRange || 'Normal',
-      flag: item.isAlert ? 'HIGH' : 'NORMAL',
+      flag: item.flag === 'LL' ? 'CRITICAL_LOW' : item.flag === 'HH' ? 'CRITICAL_HIGH' : item.flag === 'L' ? 'LOW' : item.isAlert ? 'HIGH' : 'NORMAL',
     });
   }
 
@@ -115,12 +115,16 @@ export class ReportesService {
         };
       }
 
+      let buffer = await unit.findIssuedPdf();
+      if (!buffer) {
       const reportOrder = await unit.findReportOrder();
       if (!reportOrder) throw new Error('Orden no encontrada');
       const template = await unit.findDefaultTemplate();
       if (!template) throw new Error('Configura una plantilla predeterminada para emitir informes');
       const qrToken = await unit.getOrCreateQrToken(template.id);
-      const buffer = await renderer.render(buildPdfData(reportOrder, template, qrToken, now));
+      buffer = await renderer.render(buildPdfData(reportOrder, template, qrToken, now));
+      await unit.saveIssuedPdf(buffer);
+      }
 
       if (balance > 0) {
         await unit.log(

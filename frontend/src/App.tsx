@@ -1,3 +1,4 @@
+import ReferenciasPage from './pages/ReferenciasPage'
 import CatalogoPage from './pages/CatalogoPage'
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
@@ -22,6 +23,7 @@ export default function App() {
         <Suspense fallback={<div>Cargando...</div>}>
           <Routes>
             <Route element={<Layout />}>
+              <Route path="resultados/referencias" element={<ReferenciasPage />} />
               <Route path="catalogo/estudios" element={<CatalogoPage kind="studies" />} />
               <Route path="catalogo/perfiles" element={<CatalogoPage kind="profiles" />} />
               <Route path="/" element={<Navigate to="/recepcion/nueva-orden" replace />} />

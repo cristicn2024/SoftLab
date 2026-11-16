@@ -20,6 +20,7 @@ export type MuestraDeOrden = {
 }
 
 export type OrdenDeLista = {
+  referenceContext?: { processedAt: string | null; condition: string; weeks: number | null }
   orderId: number
   folio: string
   receivedAt: string | null

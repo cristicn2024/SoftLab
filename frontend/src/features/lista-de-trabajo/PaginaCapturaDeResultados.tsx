@@ -1,3 +1,4 @@
+import { FormularioContextoReferencia } from './ContextoReferencia'
 import type { KeyboardEvent } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { Aviso } from '../../compartido/Aviso'
@@ -23,7 +24,7 @@ function textoDeMuestra(orden: OrdenDeLista): string {
 }
 
 function CapturaDeOrden({ idOrden }: { idOrden: number }) {
-  const { estado, valores, guardando, mensaje, aviso, cambiarValor, guardar } = useCapturaDeResultados(idOrden)
+  const { recargarContexto, estado, valores, guardando, mensaje, aviso, cambiarValor, guardar } = useCapturaDeResultados(idOrden)
   const ubicacion = useLocation()
   const estadoDeNavegacion = ubicacion.state as { aviso?: string } | null
 
@@ -121,6 +122,8 @@ function CapturaDeOrden({ idOrden }: { idOrden: number }) {
           Bitácora del resultado
         </button>
       </div>
+
+      {orden.referenceContext && <FormularioContextoReferencia orderId={idOrden} context={orden.referenceContext} locked={orden.capturedCount > 0} onSaved={recargarContexto} />}
 
       {hayParametrosSinRango(pendientes) && (
         <div className="range-alert" role="status">

@@ -140,6 +140,8 @@ model User {
 }
 
 model Patient {
+  specialCondition String? @map("special_condition") @db.VarChar(100)
+  pregnancyWeeks Int? @map("pregnancy_weeks")
   id        Int      @id @default(autoincrement())
   tenantId  Int      @map("tenant_id")
   firstName String   @map("first_name") @db.VarChar(100)
@@ -233,6 +235,9 @@ model ProfileTest {
 }
 
 model Order {
+  processedAt DateTime? @map("processed_at")
+  referenceCondition String? @map("reference_condition") @db.VarChar(100)
+  referenceWeeks Int? @map("reference_weeks")
   id             Int         @id @default(autoincrement())
   tenantId       Int         @map("tenant_id")
   branchId       Int         @map("branch_id")
@@ -328,6 +333,7 @@ model TestResult {
   validatedBy Int?         @map("validated_by")
   validatedAt DateTime?    @map("validated_at")
   createdAt   DateTime     @default(now()) @map("created_at")
+  referenceSnapshot String? @map("reference_snapshot") @db.Text
   flag        String?      @db.VarChar(10)
   parameterId Int?         @map("parameter_id")
 
@@ -374,6 +380,7 @@ model ReportTemplate {
 }
 
 model OrderReport {
+  issuedPdf String? @map("issued_pdf") @db.LongText
   id         Int      @id @default(autoincrement())
   tenantId   Int      @map("tenant_id")
   orderId    Int      @map("order_id")
@@ -626,4 +633,18 @@ model CatalogAudit {
  after Json
  @@index([tenantId, kind, itemId])
  @@map("catalog_audit")
+}
+
+// Versiones inmutables; la vigencia termina al comenzar la siguiente version.
+model ReferenceVersion {
+ id Int @id @default(autoincrement())
+ tenantId Int @map("tenant_id")
+ testId Int @map("test_id")
+ parameterId Int @map("parameter_id")
+ effectiveFrom DateTime @map("effective_from")
+ rules Json
+ userName String @map("user_name") @db.VarChar(150)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([tenantId, parameterId, effectiveFrom])
+ @@map("reference_versions")
 }

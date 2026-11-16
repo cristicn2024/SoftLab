@@ -157,10 +157,10 @@ test('arma los datos del PDF con los mismos valores de siempre', async () => {
   assert.equal(data.template.signatureUrl, 'firma.png');
   assert.equal(data.resultsByArea[0].areaName, 'LABORATORIO CLÍNICO GENERAL');
   assert.deepEqual(data.resultsByArea[0].items[0], {
-    testName: 'Glucosa', resultValue: '90', units: 'mg/dL', referenceRange: '70 - 99', flag: 'NORMAL',
+    testName: 'Glucosa', resultValue: '90', units: '', referenceRange: '70 - 99', flag: 'NORMAL',
   });
   assert.deepEqual(data.resultsByArea[0].items[1], {
-    testName: 'Perfil lipídico', resultValue: 'N/A', units: 'mg/dL', referenceRange: 'Normal', flag: 'HIGH',
+    testName: 'Perfil lipídico', resultValue: 'N/A', units: '', referenceRange: 'Normal', flag: 'HIGH',
   });
   assert.equal(data.resultsByArea[0].items[2].testName, 'Concepto sin nombre');
   assert.equal(repository.stored(1, 7)?.qrToken, 'token-7');

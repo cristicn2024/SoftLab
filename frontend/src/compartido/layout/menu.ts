@@ -37,7 +37,7 @@ export const MENU: ElementoMenu[] = [
       { etiqueta: 'Captura de resultados', ruta: '/resultados/lista-de-trabajo' },
       { etiqueta: 'Por validar' },
       { etiqueta: 'Envíos' },
-      { etiqueta: 'Rangos de referencia' },
+      { etiqueta: 'Rangos de referencia', ruta: '/resultados/referencias' },
       { etiqueta: 'Plantilla de informes', ruta: '/resultados/plantillas' }
     ]
   },

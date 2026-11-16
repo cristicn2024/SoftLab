@@ -1,6 +1,8 @@
 import type { ReleaseOrder, ReportOrder, ReportPdfData, ReportTemplateData, VerifiedReport } from './reportes.types';
 
 export interface ReleaseUnit {
+  findIssuedPdf(): Promise<Buffer | null>;
+  saveIssuedPdf(buffer: Buffer): Promise<void>;
   findOrder(): Promise<ReleaseOrder | null>;
   log(userName: string, action: string, detail: string): Promise<void>;
   findReportOrder(): Promise<ReportOrder | null>;

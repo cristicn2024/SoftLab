@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { SESION } from '../compartido/sesion';
 
-type Study = { id: number; code: string; name: string; price: string; status: boolean; department: string; sampleType: string };
+type Study = { id: number; code: string; name: string; price: string; status: boolean; department: string; sampleType: string; genderRestriction?: string; containerType?: string | null; sampleVolume?: number | string | null; sampleVolumeUnit?: string | null; fastingHours?: number | null; preparationInstructions?: string | null; medicationWarnings?: string | null; additionalInstructions?: string | null };
 type Profile = Study & { tests: { test: Study; testId: number }[] };
 type Audit = { id: number; userName: string; createdAt: string; before: unknown; after: unknown };
 const headers = { 'x-user-name': encodeURIComponent(SESION.usuario), 'x-user-role': encodeURIComponent(SESION.rol) };
-const empty = { code: '', name: '', price: '0', department: '', sampleType: '', status: true, testIds: [] as number[] };
+const empty = { code: '', name: '', price: '0', department: '', sampleType: '', genderRestriction: 'BOTH', containerType: '', sampleVolume: '', sampleVolumeUnit: '', fastingHours: '', preparationInstructions: '', medicationWarnings: '', additionalInstructions: '', status: true, testIds: [] as number[] };
 
 export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' }) {
   const [catalog, setCatalog] = useState<{ studies: Study[]; profiles: Profile[] }>({ studies: [], profiles: [] });
@@ -33,6 +33,7 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
     setId(item?.id);
     setDraft(item ? { code: item.code, name: item.name, price: String(item.price), status: item.status,
       department: item.department ?? '', sampleType: item.sampleType ?? '',
+      genderRestriction: item.genderRestriction ?? 'BOTH', containerType: item.containerType ?? '', sampleVolume: item.sampleVolume == null ? '' : String(item.sampleVolume), sampleVolumeUnit: item.sampleVolumeUnit ?? '', fastingHours: item.fastingHours == null ? '' : String(item.fastingHours), preparationInstructions: item.preparationInstructions ?? '', medicationWarnings: item.medicationWarnings ?? '', additionalInstructions: item.additionalInstructions ?? '',
       testIds: 'tests' in item ? item.tests.map(t => t.testId) : [] } : empty);
     setEditing(true); setError('');
   }
@@ -57,6 +58,13 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
       {kind === 'studies' ? <>
         <label>Área / departamento <input required maxLength={100} value={draft.department} onChange={e => setDraft({ ...draft, department: e.target.value })} /></label>
         <label>Tipo de muestra <input required maxLength={50} value={draft.sampleType} onChange={e => setDraft({ ...draft, sampleType: e.target.value })} /></label>
+        <label>Sexo al que aplica <select value={draft.genderRestriction} onChange={e => setDraft({ ...draft, genderRestriction: e.target.value })}><option value="BOTH">Ambos</option><option value="F">Solo femenino</option><option value="M">Solo masculino</option></select></label>
+        <label>Tipo de tubo o contenedor <input maxLength={100} value={draft.containerType} onChange={e => setDraft({ ...draft, containerType: e.target.value })} /></label>
+        <div style={{ display: 'flex', gap: 8 }}><label>Volumen requerido <input type="number" min="0.001" step="0.001" value={draft.sampleVolume} onChange={e => setDraft({ ...draft, sampleVolume: e.target.value })} /></label><label>Unidad <input maxLength={20} placeholder="mL" value={draft.sampleVolumeUnit} onChange={e => setDraft({ ...draft, sampleVolumeUnit: e.target.value })} /></label></div>
+        <label>Horas de ayuno <input type="number" min="0" max="72" step="1" value={draft.fastingHours} onChange={e => setDraft({ ...draft, fastingHours: e.target.value })} /></label>
+        <label>Indicaciones de preparación <textarea maxLength={4000} rows={3} value={draft.preparationInstructions} onChange={e => setDraft({ ...draft, preparationInstructions: e.target.value })} /></label>
+        <label>Advertencias sobre medicamentos <textarea maxLength={4000} rows={3} value={draft.medicationWarnings} onChange={e => setDraft({ ...draft, medicationWarnings: e.target.value })} /></label>
+        <label>Instrucciones adicionales para el paciente <textarea maxLength={4000} rows={3} value={draft.additionalInstructions} onChange={e => setDraft({ ...draft, additionalInstructions: e.target.value })} /></label>
       </> : <fieldset><legend>Estudios del perfil (selecciona al menos uno)</legend>
         {catalog.studies.map(t => <label key={t.id} style={{ display: 'block' }}>
           <input type="checkbox" checked={draft.testIds.includes(t.id)} onChange={e => setDraft({ ...draft, testIds: e.target.checked ? [...draft.testIds, t.id] : draft.testIds.filter(v => v !== t.id) })} />
@@ -70,7 +78,7 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
     </form>}
     <table style={{ width: '100%', marginTop: 24, textAlign: 'left' }}><thead><tr><th>Clave</th><th>Nombre</th><th>Detalle</th><th>Estatus</th><th>Acciones</th></tr></thead>
       <tbody>{catalog[kind].map(item => <tr key={item.id}><td>{item.code}</td><td>{item.name}</td>
-        <td>{'tests' in item ? <>{item.tests.map(t => t.test.name).join(', ')}{item.tests.some(t => !t.test.status) && <p role="alert">Incluye estudios inactivos</p>}</> : item.department}</td>
+        <td>{'tests' in item ? <>{item.tests.map(t => t.test.name).join(', ')}{item.tests.some(t => !t.test.status) && <p role="alert">Incluye estudios inactivos</p>}</> : <>{item.department} · {item.sampleType} · {item.genderRestriction === 'F' ? 'Femenino' : item.genderRestriction === 'M' ? 'Masculino' : 'Ambos'}</>}</td>
         <td>{item.status ? 'Activo' : 'Inactivo'}</td><td>{admin && <button onClick={() => edit(item)}>Editar / desactivar</button>}</td></tr>)}</tbody>
     </table>
     {catalog[kind].length === 0 && <p>Aún no hay registros.</p>}

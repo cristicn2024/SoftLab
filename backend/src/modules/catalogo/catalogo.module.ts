@@ -54,7 +54,30 @@ export class CatalogoController {
     if (body.price === '' || body.price == null || !Number.isFinite(price) || price < 0 || price > 99999999.99 || Math.abs(price * 100 - Math.round(price * 100)) > 0.00001) throw new BadRequestException('Precio inválido');
     if (typeof body.status !== 'boolean') throw new BadRequestException('Estatus inválido');
     const data = { code, name, price, status: body.status };
-    const study = kind === 'studies' ? { department: text('department', 100), sampleType: text('sampleType', 50) } : null;
+    const study = kind === 'studies' ? (() => {
+      const genderRestriction = body.genderRestriction ?? 'BOTH';
+      if (!['BOTH', 'F', 'M'].includes(String(genderRestriction))) throw new BadRequestException('Sexo aplicable inválido');
+      const optionalText = (key: string, max: number) => {
+        const value = body[key];
+        if (value == null || value === '') return null;
+        if (typeof value !== 'string' || value.trim().length > max) throw new BadRequestException(`${key} inválido (máximo ${max} caracteres)`);
+        return value.trim();
+      };
+      const fastingHours = body.fastingHours == null || body.fastingHours === '' ? null : Number(body.fastingHours);
+      if (fastingHours != null && (!Number.isInteger(fastingHours) || fastingHours < 0 || fastingHours > 72)) throw new BadRequestException('Horas de ayuno inválidas (0 a 72)');
+      const sampleVolume = body.sampleVolume == null || body.sampleVolume === '' ? null : Number(body.sampleVolume);
+      if (sampleVolume != null && (!Number.isFinite(sampleVolume) || sampleVolume <= 0 || sampleVolume > 9999999)) throw new BadRequestException('Volumen de muestra inválido');
+      const sampleVolumeUnit = optionalText('sampleVolumeUnit', 20);
+      if ((sampleVolume == null) !== (sampleVolumeUnit == null)) throw new BadRequestException('Indica juntos el volumen y la unidad de la muestra');
+      return {
+        department: text('department', 100), sampleType: text('sampleType', 50),
+        genderRestriction: String(genderRestriction), containerType: optionalText('containerType', 100),
+        sampleVolume, sampleVolumeUnit, fastingHours,
+        preparationInstructions: optionalText('preparationInstructions', 4000),
+        medicationWarnings: optionalText('medicationWarnings', 4000),
+        additionalInstructions: optionalText('additionalInstructions', 4000),
+      };
+    })() : null;
     const testIds = kind === 'profiles' && Array.isArray(body.testIds) ? [...new Set(body.testIds)] : [];
     if (kind === 'profiles' && (!testIds.length || testIds.some(v => !Number.isSafeInteger(v) || Number(v) <= 0))) throw new BadRequestException('Selecciona al menos un estudio');
 

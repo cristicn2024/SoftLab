@@ -98,6 +98,8 @@ export class OrdenesService {
             totalAmount,
             folio,
             items,
+            preAnalyticalSnapshot: input.preAnalyticalSnapshot,
+            exceptionApprovals: input.exceptionApprovals,
           });
           return { success: true, folio, orderId: created.id };
         } catch (error) {

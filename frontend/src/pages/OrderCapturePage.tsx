@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
+import { SESION } from '../compartido/sesion';
 
 interface Concept {
   id: number;
@@ -18,17 +19,27 @@ interface Doctor {
   specialty?: string;
 }
 
+interface Patient {
+  id: number; firstName: string; lastName: string; patientCode: string | null; birthDate: string; gender: 'M' | 'F' | 'Other';
+}
+interface Branch { id: number; name: string }
+
+interface OrderPreview {
+  patientGender: Patient['gender'];
+  indications: { studies: { id: number; code: string; name: string }[]; muestras: { tipo: string; contenedor: string | null; volumenes: string[]; estudios: string[] }[]; ayunos: { horas: number | null; texto: string; estudios: string[] }[]; preparacion: { texto: string; estudios: string[] }[]; medicamentos: { texto: string; estudios: string[] }[]; adicionales: { texto: string; estudios: string[] }[]; conflictos: string[] };
+  incompatibleStudies: { testId: number; code: string; name: string; reason: string }[];
+}
+
 export const OrderCapturePage: React.FC = () => {
-  // Datos del Paciente (Ejemplo dinámico o prop)
-  const [patient] = useState({
-    id: 231,
-    fullName: 'María López García',
-    code: 'P-000231',
-    ageYears: 38,
-    gender: 'Mujer',
-    genderKey: 'FEMALE',
-    branchName: 'Clínica Central'
-  });
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchId, setBranchId] = useState<number | null>(null);
+  const [preview, setPreview] = useState<OrderPreview | null>(null);
+  const [previewError, setPreviewError] = useState('');
+  const [instructionReviewConfirmed, setInstructionReviewConfirmed] = useState(false);
+  const [exceptionReasons, setExceptionReasons] = useState<Record<number, string>>({});
 
   // Médicos y Selección
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -48,11 +59,25 @@ export const OrderCapturePage: React.FC = () => {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    api.get('/branches').then((res) => {
+      const loaded: Branch[] = res.data ?? [];
+      setBranches(loaded);
+      setBranchId((current) => current ?? loaded.find((branch) => branch.name === SESION.sucursal)?.id ?? loaded[0]?.id ?? null);
+    }).catch(() => setPreviewError('No se pudieron consultar las sucursales del laboratorio.'));
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    api.get('/patients', { params: { q: patientSearch } }).then((res) => { if (active) setPatients(res.data ?? []); }).catch(() => { if (active) setPreviewError('No se pudo consultar el padrón de pacientes.'); });
+    return () => { active = false; };
+  }, [patientSearch]);
+
   // 1. Cargar médicos y validar si el paciente tiene orden abierta hoy
   useEffect(() => {
     loadDoctors();
     checkOpenOrder();
-  }, [patient.id]);
+  }, [patient?.id]);
 
   const loadDoctors = async () => {
     try {
@@ -64,6 +89,7 @@ export const OrderCapturePage: React.FC = () => {
   };
 
   const checkOpenOrder = async () => {
+    if (!patient) return;
     try {
       const res = await api.get(`/orders/check-open?patientId=${patient.id}`);
       setOpenOrderWarning(res.data.hasOpenOrder);
@@ -71,6 +97,18 @@ export const OrderCapturePage: React.FC = () => {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    if (!patient || orderItems.length === 0) { setPreview(null); setPreviewError(''); return; }
+    let active = true;
+    api.post('/orders/indications/preview', { patientId: patient.id, items: orderItems }).then((res) => {
+      if (active) { setPreview(res.data); setPreviewError(''); setExceptionReasons({}); setInstructionReviewConfirmed(false); }
+    }).catch((error) => {
+      const message = error?.response?.data?.message;
+      if (active) setPreviewError(typeof message === 'string' ? message : 'No se pudieron calcular las indicaciones de la orden.');
+    });
+    return () => { active = false; };
+  }, [patient?.id, orderItems]);
 
   // 2. Autocompletado predictivo
   useEffect(() => {
@@ -119,15 +157,6 @@ const addConcept = (concept: Concept) => {
   }
 
   // 2. Validar restricción por sexo
-  if (
-    concept.genderRestriction !== 'BOTH' &&
-    concept.genderRestriction !== patient.genderKey
-  ) {
-    newWarnings.push(
-      `El estudio "${concept.name}" no corresponde al sexo registrado (${patient.gender}).`
-    );
-  }
-
   // 3. Validar si el estudio ya está incluido en un perfil
   const alreadyInProfile = orderItems.some((i) =>
     i.type === 'PROFILE' &&
@@ -183,18 +212,25 @@ const addConcept = (concept: Concept) => {
   const totalAmount = orderItems.reduce((acc, curr) => acc + curr.price, 0);
 
   const handleConfirmOrder = async () => {
-    if (orderItems.length === 0) return;
+    if (orderItems.length === 0 || !patient || !preview || !branchId) return;
+    if (previewError) { setWarnings([previewError]); return; }
+    if (preview.indications.conflictos.length && !instructionReviewConfirmed) { setWarnings(['Confirma que revisaste las indicaciones con conflicto.']); return; }
+    const approvals = preview.incompatibleStudies.map((study) => ({ testId: study.testId, reason: exceptionReasons[study.testId]?.trim() ?? '' }));
+    if (approvals.some((approval) => !approval.reason)) { setWarnings(['Cada estudio incompatible requiere motivo de excepción autorizado.']); return; }
     try {
       const res = await api.post('/orders', {
         patientId: patient.id,
-        branchId: 1,
+        branchId,
         doctorId: selectedDoctorId !== 'particular' ? Number(selectedDoctorId) : null,
         items: orderItems,
         totalAmount,
+        reviewedInstructionConflicts: instructionReviewConfirmed,
+        exceptionApprovals: approvals,
       });
       alert(`¡Orden capturada exitosamente! Folio: ${res.data.folio}`);
       setOrderItems([]);
       setWarnings([]);
+      setPreview(null);
     } catch {
       alert('Error al registrar la orden');
     }
@@ -213,8 +249,24 @@ const addConcept = (concept: Concept) => {
           <div style={{ ...styles.breadcrumb, textAlign: 'left' }}>Recepción / Nueva orden</div>
           <h1 style={{ ...styles.pageTitle, textAlign: 'left' }}>Nueva orden</h1>
           <p style={{ ...styles.patientMeta, textAlign: 'left' }}>
-            {patient.fullName} · {patient.code} · {patient.ageYears} años · {patient.gender} · {patient.branchName}
+            {patient ? `${patient.firstName} ${patient.lastName} · ${patient.patientCode ?? 'Sin clave'} · ${patient.gender === 'F' ? 'Femenino' : patient.gender === 'M' ? 'Masculino' : 'Sexo no determinado'}` : 'Selecciona un paciente para iniciar la orden.'}
           </p>
+
+          <section style={{ ...styles.configCard, textAlign: 'left' }}>
+            <label style={styles.label}>Sucursal
+              <select aria-label="Seleccionar sucursal" value={branchId ?? ''} onChange={(e) => setBranchId(Number(e.target.value) || null)} style={styles.selectInput}>
+                <option value="">Selecciona una sucursal</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+              </select>
+            </label>
+            <label style={styles.label}>Paciente
+              <input value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)} placeholder="Buscar por nombre o clave" style={styles.searchInput} />
+            </label>
+            <select aria-label="Seleccionar paciente" value={patient?.id ?? ''} onChange={(e) => { setPatient(patients.find((item) => item.id === Number(e.target.value)) ?? null); setOrderItems([]); setWarnings([]); setPreview(null); }} style={styles.selectInput}>
+              <option value="">Selecciona un paciente</option>
+              {patients.map((item) => <option key={item.id} value={item.id}>{item.firstName} {item.lastName} · {item.patientCode ?? `#${item.id}`} · {item.gender === 'F' ? 'Femenino' : item.gender === 'M' ? 'Masculino' : 'Sexo no determinado'}</option>)}
+            </select>
+            {patients.length === 0 && <small>No hay pacientes que coincidan con la búsqueda.</small>}
+          </section>
 
           {/* ALERTA: ORDEN ABIERTA HOY */}
           {openOrderWarning && (
@@ -253,6 +305,7 @@ const addConcept = (concept: Concept) => {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  disabled={!patient}
                   placeholder="Busca por clave o nombre"
                   style={styles.searchInput}
                 />
@@ -296,6 +349,21 @@ const addConcept = (concept: Concept) => {
               ))}
             </div>
           )}
+
+          {previewError && <div role="alert" style={styles.warningBox}>{previewError}</div>}
+          {preview && <section className="instructions" style={styles.configCard} aria-label="Indicaciones preanalíticas">
+            <h2>Indicaciones de preparación</h2>
+            {preview.indications.muestras.map((sample, index) => <p key={`sample-${index}`}><strong>Muestra:</strong> {sample.tipo}{sample.contenedor ? ` · ${sample.contenedor}` : ''}{sample.volumenes.length ? ` · ${sample.volumenes.join(', ')}` : ''} <small>({sample.estudios.join(', ')})</small></p>)}
+            {preview.indications.ayunos.map((fast, index) => <p key={`fast-${index}`}><strong>Ayuno:</strong> {fast.horas == null ? fast.texto : fast.horas === 0 ? 'No se requiere ayuno' : `${fast.horas} horas`} <small>({fast.estudios.join(', ')})</small></p>)}
+            {[...preview.indications.preparacion, ...preview.indications.medicamentos, ...preview.indications.adicionales].map((instruction, index) => <p key={`text-${index}`}>{instruction.texto} <small>({instruction.estudios.join(', ')})</small></p>)}
+            {preview.indications.conflictos.map((conflict) => <p role="alert" key={conflict}>Revisión requerida: {conflict}</p>)}
+            {preview.indications.conflictos.length > 0 && <label><input type="checkbox" checked={instructionReviewConfirmed} onChange={(e) => setInstructionReviewConfirmed(e.target.checked)} /> Confirmo que revisé los requisitos configurados con conflicto.</label>}
+            {preview.incompatibleStudies.map((study) => <div role="alert" key={study.testId} style={styles.warningBox}>
+              <strong>{study.code} · {study.name}:</strong> {study.reason}. La orden requiere excepción administrativa.
+              {['admin', 'Administradora', 'Administrador'].includes(SESION.rol) && <label>Motivo de excepción * <textarea required maxLength={500} value={exceptionReasons[study.testId] ?? ''} onChange={(e) => setExceptionReasons({ ...exceptionReasons, [study.testId]: e.target.value })} /></label>}
+            </div>)}
+            <button type="button" onClick={() => window.print()}>Imprimir indicaciones</button>
+          </section>}
 
           {/* SECCIÓN PRINCIPAL: ESTADO VACÍO (EMPTY STATE) O TABLA DE ESTUDIOS */}
           <section style={styles.mainCard}>
@@ -360,7 +428,7 @@ const addConcept = (concept: Concept) => {
                   backgroundColor: orderItems.length > 0 ? '#1b3b2b' : '#d4d4d4',
                   cursor: orderItems.length > 0 ? 'pointer' : 'not-allowed',
                 }}
-                disabled={orderItems.length === 0}
+                disabled={orderItems.length === 0 || !patient || !branchId || !preview || Boolean(previewError) || (preview.indications.conflictos.length > 0 && !instructionReviewConfirmed) || (preview.incompatibleStudies.length > 0 && (!['admin', 'Administradora', 'Administrador'].includes(SESION.rol) || preview.incompatibleStudies.some((study) => !exceptionReasons[study.testId]?.trim())))}
                 onClick={handleConfirmOrder}
               >
                 Continuar al cobro

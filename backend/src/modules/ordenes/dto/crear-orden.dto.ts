@@ -29,4 +29,14 @@ export class CrearOrdenDto {
   @Allow()
   @Transform(({ obj }: Cuerpo) => obj.totalAmount)
   totalAmount?: unknown;
+
+  @ApiPropertyOptional({ description: 'Confirmación expresa de revisión de conflictos de indicaciones' })
+  @Allow()
+  @Transform(({ obj }: Cuerpo) => obj.reviewedInstructionConflicts)
+  reviewedInstructionConflicts?: unknown;
+
+  @ApiPropertyOptional({ description: 'Motivos de excepción autorizada: [{ testId, reason }]' })
+  @Allow()
+  @Transform(({ obj }: Cuerpo) => obj.exceptionApprovals)
+  exceptionApprovals?: unknown;
 }

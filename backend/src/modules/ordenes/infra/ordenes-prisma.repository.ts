@@ -107,14 +107,24 @@ export class OrdenesPrismaRepository implements OrdenesRepository {
       totalAmount: data.totalAmount,
       folio: data.folio,
       status: 'pending',
+      ...(data.preAnalyticalSnapshot === undefined ? {} : { preAnalyticalSnapshot: data.preAnalyticalSnapshot as Prisma.InputJsonValue }),
     };
     if (data.items.length > 0) {
       orderData.items = { create: data.items };
     }
 
     try {
-      const order = await this.prisma.order.create({ data: orderData });
-      return { id: order.id };
+      return await this.prisma.$transaction(async (tx) => {
+        const order = await tx.order.create({ data: orderData });
+        if (data.exceptionApprovals?.length) {
+          await tx.studyAdmissionException.createMany({ data: data.exceptionApprovals.map((approval) => ({
+            tenantId: data.tenantId, orderId: order.id, patientId: data.patientId,
+            testId: approval.testId, reason: approval.reason, authorizedByName: approval.authorizedByName,
+            authorizedById: approval.authorizedById ?? null,
+          })) });
+        }
+        return { id: order.id };
+      });
     } catch (error) {
       if (isDuplicateFolio(error)) throw new DuplicateFolioError();
       throw error;

@@ -5,6 +5,7 @@ import { configurarApp } from '../../configurar-app';
 import { catalogProfile, catalogTest, FakeRepository } from './dominio/ordenes.escenarios';
 import { OrdenesModule } from './ordenes.module';
 import { ORDENES_REPOSITORY } from './ordenes.tokens';
+import { PrismaService } from '../../prisma/prisma.service';
 
 const TENANT = { 'x-tenant-id': '1' };
 
@@ -19,9 +20,19 @@ describe('API de nueva orden', () => {
     repositorio.addProfile(1, catalogProfile(3, [1], { code: 'PERF-QA', name: 'Perfil QA', price: 300 }));
     repositorio.addProfile(1, catalogProfile(4, [1], { code: 'INACT-QA', name: 'Perfil inactivo QA' }), false);
 
+    const prisma = {
+      patient: { findFirst: jest.fn(async ({ where }: { where: { id: number } }) => ({ id: where.id, gender: where.id === 6 ? 'M' : 'F' })) },
+      branch: { findFirst: jest.fn(async () => ({ id: 1 })) },
+      doctor: { findFirst: jest.fn(async () => ({ id: 7 })) },
+      testCatalog: { findMany: jest.fn(async ({ where }: { where: { id: { in: number[] } } }) => where.id.in.map((id) => ({ id, tenantId: 1, status: true, code: `T-${id}`, name: `Estudio ${id}`, sampleType: 'Sangre', containerType: id === 1 ? 'Tubo rojo' : null, sampleVolume: null, sampleVolumeUnit: null, fastingHours: null, preparationInstructions: null, medicationWarnings: null, additionalInstructions: null, genderRestriction: id === 5 ? 'F' : 'BOTH' }))) },
+      profileCatalog: { findMany: jest.fn(async ({ where }: { where: { id: { in: number[] } } }) => where.id.in.map((id) => ({ id, tenantId: 1, status: true, name: `Perfil ${id}`, tests: [{ testId: 1, test: { id: 1, tenantId: 1, status: true, code: 'T-1', name: 'Estudio 1', sampleType: 'Sangre', containerType: 'Tubo rojo', sampleVolume: null, sampleVolumeUnit: null, fastingHours: null, preparationInstructions: null, medicationWarnings: null, additionalInstructions: null, genderRestriction: 'BOTH' } }] }))) },
+    };
+
     const modulo = await Test.createTestingModule({ imports: [OrdenesModule] })
       .overrideProvider(ORDENES_REPOSITORY)
       .useValue(repositorio)
+      .overrideProvider(PrismaService)
+      .useValue(prisma)
       .compile();
     app = modulo.createNestApplication();
     configurarApp(app as never);
@@ -156,6 +167,23 @@ describe('API de nueva orden', () => {
     expect(repositorio.orders[0].data.doctorId).toBe(7);
     expect(repositorio.orders[0].data.totalAmount).toBe(99.5);
     expect(repositorio.orders[0].data.items).toEqual([]);
+  });
+
+  it('bloquea incompatibilidad por sexo en backend y registra excepción con usuario, motivo y estudio', async () => {
+    const body = { patientId: 6, branchId: 1, items: [{ id: 5, type: 'TEST', price: 10 }], totalAmount: 10 };
+    const bloqueada = await request(app.getHttpServer()).post('/api/orders').set(TENANT).send(body);
+    expect(bloqueada.status).toBe(400);
+    expect(repositorio.orders).toHaveLength(0);
+
+    const noAutorizada = await request(app.getHttpServer()).post('/api/orders').set(TENANT).send({ ...body, exceptionApprovals: [{ testId: 5, reason: 'Caso clínico' }] });
+    expect(noAutorizada.status).toBe(403);
+
+    const sinMotivo = await request(app.getHttpServer()).post('/api/orders').set({ ...TENANT, 'x-user-role': 'admin', 'x-user-name': 'Admin QA' }).send({ ...body, exceptionApprovals: [{ testId: 5, reason: '  ' }] });
+    expect(sinMotivo.status).toBe(400);
+
+    const autorizada = await request(app.getHttpServer()).post('/api/orders').set({ ...TENANT, 'x-user-role': 'admin', 'x-user-name': 'Admin QA' }).send({ ...body, exceptionApprovals: [{ testId: 5, reason: 'Autorización clínica documentada' }] });
+    expect(autorizada.status).toBe(201);
+    expect(repositorio.orders[0].data.exceptionApprovals).toEqual([{ testId: 5, reason: 'Autorización clínica documentada', authorizedByName: 'Admin QA' }]);
   });
 
   it('responde 500 con el mensaje de siempre cuando la base falla', async () => {

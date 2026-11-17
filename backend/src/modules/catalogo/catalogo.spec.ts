@@ -43,6 +43,15 @@ describe('Catálogo', () => {
     expect(audits[1].after.status).toBe(false);
     expect(audits[1].userName).toBe('Admin');
   });
+  it('persiste requisitos preanalíticos y restricción de sexo con validaciones', async () => {
+    await request(app.getHttpServer()).post('/api/catalogo/studies').set(headers).send({
+      ...valid, genderRestriction: 'F', containerType: 'Tubo morado', sampleVolume: 2.5, sampleVolumeUnit: 'mL', fastingHours: 8,
+      preparationInstructions: 'Indicación configurada', medicationWarnings: 'Advertencia configurada', additionalInstructions: 'Dato adicional',
+    }).expect(201);
+    expect(studies[0]).toMatchObject({ genderRestriction: 'F', containerType: 'Tubo morado', sampleVolume: 2.5, sampleVolumeUnit: 'mL', fastingHours: 8, preparationInstructions: 'Indicación configurada' });
+    await request(app.getHttpServer()).post('/api/catalogo/studies').set(headers).send({ ...valid, code: 'BAD', name: 'Mala', genderRestriction: 'X' }).expect(400);
+    await request(app.getHttpServer()).post('/api/catalogo/studies').set(headers).send({ ...valid, code: 'BAD', name: 'Mala', sampleVolume: 2, sampleVolumeUnit: '' }).expect(400);
+  });
   it('rechaza duplicados ignorando mayúsculas y espacios', async () => {
     studies.push({ id: 9, tenantId: 1, ...valid });
     await request(app.getHttpServer()).post('/api/catalogo/studies').set(headers).send({ ...valid, code: 'OTRA', name: ' glucosa ' }).expect(409);

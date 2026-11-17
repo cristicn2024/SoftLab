@@ -82,10 +82,11 @@ Las tablas físicas usan los nombres `@@map` indicados en `backend/prisma/schema
 | `User` / `users` | Usuario, sucursal opcional, email único global, hash de contraseña y rol. Se relaciona con validación de resultados, caja, pagos e indicaciones. No hay login API visible que valide `passwordHash`. |
 | `Patient` / `patients` | Identidad clínica básica, fecha de nacimiento, sexo y contactos; relacionado con órdenes. `patientCode` es único por tenant cuando no es nulo. |
 | `Doctor` / `doctors` | Médico solicitante con cédula/especialidad/contacto; opcional en orden. No confundir con `Practitioner`. |
-| `TestCatalog` / `test_catalog` | Catálogo de estudios: código, precio, tipo de muestra, restricción de sexo, rango textual legado, laboratorio externo y tiempo estimado. Relacionado con parámetros, rangos, instrucciones, perfiles y conceptos de orden. |
+| `TestCatalog` / `test_catalog` | Catálogo de estudios: código, precio, muestra, contenedor, volumen/unidad, ayuno, instrucciones preanalíticas y sexo aplicable, además de rangos, laboratorio externo y tiempo estimado. Relacionado con instrucciones, perfiles y conceptos de orden. |
 | `ProfileCatalog` / `profile_catalogs` | Perfil vendible con precio/estado; agrupa estudios mediante `ProfileTest` y puede ser concepto de orden. |
 | `ProfileTest` / `profile_tests` | Tabla puente con clave compuesta `(profileId, testId)` para la relación muchos-a-muchos perfil-estudio. |
-| `Order` / `orders` | Orden por tenant, sucursal y paciente; médico, practitioner y cajero opcionales. Guarda montos, descuento, estado, folio, factura y fecha de entrega. Agrupa líneas, muestras, resultados indirectamente, pagos, bitácora, informe e indicaciones. |
+| `Order` / `orders` | Orden por tenant, sucursal y paciente; médico, practitioner y cajero opcionales. Guarda montos, descuento, estado, folio, factura y fecha de entrega, además de una instantánea JSON de indicaciones preanalíticas para consulta posterior. |
+| `StudyAdmissionException` / `study_admission_exceptions` | Bitácora por orden, paciente y estudio de excepciones de admisibilidad, con motivo, fecha y actor; el catálogo no cambia al autorizar. |
 | `OrderItem` / `order_items` | Concepto de una orden y precio persistido; enlaza opcionalmente un estudio o perfil. Tiene resultados. El esquema no impone que solo uno de `testId`/`profileId` esté definido. |
 | `Sample` / `samples` | Muestra con código de barras, estado, timestamps, descripción/equipo/capturista; pertenece a orden y tenant. |
 | `TestResult` / `test_results` | Valor/flag/alerta/estado de un parámetro en un `OrderItem`; validador opcional. Índice único por `(orderItemId, parameterId)`. |
@@ -133,7 +134,7 @@ La mayoría de tablas de negocio almacena `tenantId`; los repositorios filtran p
 
 ## Evolución del esquema, migraciones y seeds
 
-No existe una carpeta `backend/prisma/migrations` en el árbol revisado. La ruta está declarada en `backend/prisma7.config.ts`, pero la herramienta declarada en `backend/package.json` es Prisma 6; por confirmar si dicho archivo se usa. Los scripts visibles sincronizan el esquema con `prisma db push`, no aplican migraciones versionadas.
+El proyecto mantiene `backend/prisma/migrations`, aunque su script de preparación sincroniza el esquema con `prisma db push --skip-generate`; no ejecuta `prisma migrate deploy`. El cambio HU 3/HU 4 agrega columnas nullable y una tabla de auditoría en `202611160003_hu3_hu4/migration.sql`; no se ejecutó contra ninguna base. Para sincronizar un entorno local ya configurado, el comando no destructivo del proyecto es `npx prisma db push --skip-generate` desde `backend/`, y luego `npx prisma generate`. No usar `db:reset` para aplicar este cambio. Revisar la URL de conexión antes de ejecutar `db push`.
 
 | Comando en `backend/` | Comportamiento definido |
 |---|---|

@@ -63,6 +63,8 @@ export interface NewOrderData {
   totalAmount: number;
   folio: string;
   items: NewOrderItem[];
+  preAnalyticalSnapshot?: unknown;
+  exceptionApprovals?: { testId: number; reason: string; authorizedByName: string; authorizedById?: number }[];
 }
 
 export interface RawOrderInput {
@@ -71,6 +73,8 @@ export interface RawOrderInput {
   doctorId?: unknown;
   items?: unknown;
   totalAmount?: unknown;
+  preAnalyticalSnapshot?: unknown;
+  exceptionApprovals?: { testId: number; reason: string; authorizedByName: string; authorizedById?: number }[];
 }
 
 export interface CreatedOrder {

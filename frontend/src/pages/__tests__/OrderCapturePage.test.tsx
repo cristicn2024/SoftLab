@@ -37,6 +37,7 @@ describe('HU-07: OrderCapturePage (Frontend)', () => {
   it('debe advertir si se intenta agregar un estudio duplicado', async () => {
 
     (api.get as any).mockImplementation((url: string) => {
+      if (url.includes('/patients')) return Promise.resolve({ data: [{ id: 1, firstName: 'Ana', lastName: 'QA', patientCode: 'P-1', birthDate: '1990-01-01', gender: 'F' }] });
       if (url.includes('/concepts/search')) {
         return Promise.resolve({
           data: [
@@ -55,10 +56,15 @@ describe('HU-07: OrderCapturePage (Frontend)', () => {
 
       return Promise.resolve({ data: [] });
     });
+    (api.post as any).mockResolvedValue({ data: { patientGender: 'F', indications: { studies: [], muestras: [{ tipo: 'Sangre', contenedor: 'Tubo rojo', volumenes: ['3 mL'], estudios: ['Biometría Hemática'] }], ayunos: [], preparacion: [], medicamentos: [], adicionales: [], conflictos: [] }, incompatibleStudies: [] } });
 
     await act(async () => {
       render(<OrderCapturePage />);
     });
+
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre o clave/i), { target: { value: 'Ana' } });
+    await act(async () => { await Promise.resolve(); });
+    fireEvent.change(screen.getByRole('combobox', { name: /Seleccionar paciente/i }), { target: { value: '1' } });
 
     const searchInput = screen.getByPlaceholderText(
       /Busca por clave o nombre/i
@@ -81,6 +87,7 @@ describe('HU-07: OrderCapturePage (Frontend)', () => {
 
     // Agregar el primer estudio
     fireEvent.click(firstItem);
+    expect(await screen.findByText(/Tubo rojo/)).toBeInTheDocument();
 
     // Verificar que se agregó
     expect(

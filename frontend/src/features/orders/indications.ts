@@ -9,12 +9,17 @@ export function consolidateInstructions(instructions: Instruction[]) {
     groups.set(item.type, group)
   }
   const consolidated: { title: string; studies: string[]; note?: string }[] = []
-  if (fasting.length) {
-    const strictest = fasting.reduce((a, b) => (b.minHours ?? 0) > (a.minHours ?? 0) ? b : a)
-    consolidated.push({ title: `Ayuno de ${strictest.minHours ?? strictest.maxHours ?? ''} horas`, studies: [...new Set(fasting.map((item) => item.study))], note: fasting.length > 1 ? 'Se aplica la indicación más estricta.' : undefined })
+  const fastingGroups = new Map<number, Instruction[]>()
+  for (const item of fasting) {
+    const hours = item.minHours ?? item.maxHours
+    if (hours == null) continue
+    fastingGroups.set(hours, [...(fastingGroups.get(hours) ?? []), item])
   }
-  for (const [type, entries] of groups) {
-    const title = type === 'first_urine' ? 'Primera orina de la mañana, frasco estéril' : entries.map((entry) => entry.text).join(' · ')
+  for (const [hours, entries] of [...fastingGroups].sort(([a], [b]) => a - b)) {
+    consolidated.push({ title: `Ayuno de ${hours} horas`, studies: [...new Set(entries.map((item) => item.study))], note: fastingGroups.size > 1 ? 'Hay indicaciones de ayuno distintas; requiere revisión.' : undefined })
+  }
+  for (const entries of groups.values()) {
+    const title = entries.map((entry) => entry.text).filter((text, index, all) => all.findIndex((value) => value.trim().toLocaleLowerCase() === text.trim().toLocaleLowerCase()) === index).join(' · ')
     consolidated.push({ title, studies: [...new Set(entries.map((item) => item.study))] })
   }
   return consolidated

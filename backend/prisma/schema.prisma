@@ -90,6 +90,7 @@ model Tenant {
   instructionDeliveries    InstructionDelivery[]
   criticalNotifications    CriticalNotification[]
   instructions    StudyInstruction[]
+  studyAdmissionExceptions StudyAdmissionException[]
 
   @@map("tenants")
 }
@@ -133,6 +134,7 @@ model User {
   instructionConfirmations InstructionConfirmation[]
   instructionDeliveries    InstructionDelivery[]
   criticalNotifications    CriticalNotification[]
+  studyAdmissionExceptions StudyAdmissionException[]
 
   @@index([branchId], map: "users_branch_id_fkey")
   @@index([tenantId], map: "users_tenant_id_fkey")
@@ -155,6 +157,7 @@ model Patient {
 
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orders Order[]
+  studyAdmissionExceptions StudyAdmissionException[]
 
   @@unique([tenantId, patientCode])
   @@index([tenantId], map: "patients_tenant_id_fkey")
@@ -188,6 +191,13 @@ model TestCatalog {
   price             Decimal  @db.Decimal(10, 2)
   sampleType        String   @map("sample_type") @db.VarChar(50)
   genderRestriction String   @default("BOTH") @map("gender_restriction") @db.VarChar(10)
+  containerType     String?  @map("container_type") @db.VarChar(100)
+  sampleVolume      Decimal? @map("sample_volume") @db.Decimal(10, 3)
+  sampleVolumeUnit  String?  @map("sample_volume_unit") @db.VarChar(20)
+  fastingHours      Int?     @map("fasting_hours")
+  preparationInstructions String? @map("preparation_instructions") @db.Text
+  medicationWarnings String? @map("medication_warnings") @db.Text
+  additionalInstructions String? @map("additional_instructions") @db.Text
   referenceRange    String?  @map("reference_range") @db.Text
   externalLab       String?  @map("external_lab") @db.VarChar(150)
   turnaroundHours   Int?     @map("turnaround_hours")
@@ -199,6 +209,7 @@ model TestCatalog {
   instructions StudyInstruction[]
   parameters   TestParameter[]
   ranges       ReferenceRange[]
+  admissionExceptions StudyAdmissionException[]
 
   @@unique([tenantId, code], name: "uq_tenant_test_code")
   @@map("test_catalog")
@@ -262,6 +273,7 @@ model Order {
   invoiceZip           String?   @map("invoice_zip") @db.VarChar(5)
   invoiceUse           String?   @map("invoice_use") @db.VarChar(100)
   resultsDeliveredAt   DateTime? @map("results_delivered_at")
+  preAnalyticalSnapshot Json?    @map("pre_analytical_snapshot")
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch       Branch        @relation(fields: [branchId], references: [id])
@@ -276,6 +288,7 @@ model Order {
   physician    Practitioner? @relation(fields: [physicianId], references: [id], onDelete: SetNull)
   instructionConfirmation InstructionConfirmation?
   instructionDeliveries   InstructionDelivery[]
+  studyAdmissionExceptions StudyAdmissionException[]
 
   @@index([branchId], map: "orders_branch_id_fkey")
   @@index([doctorId], map: "orders_doctor_id_fkey")
@@ -536,6 +549,26 @@ model StudyInstruction {
   test TestCatalog @relation(fields: [testId], references: [id], onDelete: Cascade)
   @@unique([testId, type, text])
   @@map("study_instructions")
+}
+
+model StudyAdmissionException {
+  id Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+  orderId Int @map("order_id")
+  patientId Int @map("patient_id")
+  testId Int @map("test_id")
+  authorizedById Int? @map("authorized_by_id")
+  authorizedByName String @map("authorized_by_name") @db.VarChar(150)
+  reason String @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  test TestCatalog @relation(fields: [testId], references: [id])
+  authorizedBy User? @relation(fields: [authorizedById], references: [id], onDelete: SetNull)
+  @@index([tenantId, orderId])
+  @@index([tenantId, patientId])
+  @@map("study_admission_exceptions")
 }
 
 model InstructionConfirmation {

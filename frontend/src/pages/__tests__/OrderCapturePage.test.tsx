@@ -1,4 +1,3 @@
-
 import {
   render,
   screen,
@@ -115,4 +114,30 @@ describe('HU-07: OrderCapturePage (Frontend)', () => {
     expect(rows).toHaveLength(2); // Encabezado + un estudio
   });
 
+  it('carga los médicos solicitantes al abrir la pantalla, sin esperar al paciente', async () => {
+    (api.get as any).mockImplementation((url: string) => {
+      if (url === '/doctors') return Promise.resolve({ data: [{ id: 3, name: 'Dra. Patricia Ruiz' }, { id: 4, name: 'Dr. Ernesto Salas' }] });
+      return Promise.resolve({ data: [] });
+    });
+
+    await act(async () => {
+      render(<OrderCapturePage />);
+    });
+
+    expect(screen.getByRole('option', { name: 'Dra. Patricia Ruiz' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Dr. Ernesto Salas' })).toBeInTheDocument();
+  });
+
+  it('avisa si no se pudieron consultar los médicos', async () => {
+    (api.get as any).mockImplementation((url: string) => {
+      if (url === '/doctors') return Promise.reject({ response: { data: { error: { mensaje: 'Error al consultar los médicos solicitantes' } } } });
+      return Promise.resolve({ data: [] });
+    });
+
+    await act(async () => {
+      render(<OrderCapturePage />);
+    });
+
+    expect(screen.getByText('Error al consultar los médicos solicitantes')).toBeInTheDocument();
+  });
 });

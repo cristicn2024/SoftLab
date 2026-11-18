@@ -15,6 +15,7 @@ import {
   pickRange,
 } from '../../src/modules/worklist/dominio/worklist.rules';
 import type { RangeRecord } from '../../src/modules/worklist/dominio/worklist.types';
+import { folioDeEnvio, prefijoDeEnvio } from '../../src/modules/externos/dominio/externos.rules';
 import { buscarEstudio, buscarPerfil, ESTUDIOS, PERFILES } from './demo-catalogo';
 import type { EstudioDef } from './demo-catalogo';
 import { CORTES_CERRADOS, MEDICOS, ORDENES, PACIENTES, USUARIOS } from './demo-ordenes';
@@ -31,6 +32,7 @@ const METODOS: Record<string, string> = { cash: 'Efectivo', card: 'Tarjeta', tra
 
 interface EstudioCreado {
   id: number;
+  laboratorioId: number | null;
   def: EstudioDef;
   parametros: Record<string, number>;
   rangos: RangoGuardado[];
@@ -101,6 +103,7 @@ async function borrarLaboratorio(tx: Tx, tenantId: number): Promise<void> {
   await tx.paymentLog.deleteMany({ where });
   await tx.orderReport.deleteMany({ where });
   await tx.sample.deleteMany({ where });
+  await tx.shipmentOrder.deleteMany({ where });
   await tx.orderItem.deleteMany({ where: { order: { tenantId } } });
   await tx.order.deleteMany({ where });
   await tx.cashCut.deleteMany({ where });
@@ -110,6 +113,7 @@ async function borrarLaboratorio(tx: Tx, tenantId: number): Promise<void> {
   await tx.profileTest.deleteMany({ where: { profile: { tenantId } } });
   await tx.profileCatalog.deleteMany({ where });
   await tx.testCatalog.deleteMany({ where });
+  await tx.externalLab.deleteMany({ where });
   await tx.reportTemplate.deleteMany({ where });
   await tx.practitioner.deleteMany({ where });
   await tx.doctor.deleteMany({ where });
@@ -141,8 +145,17 @@ async function crearLaboratorio(tx: Tx): Promise<number> {
 
 async function crearCatalogo(tx: Tx, tenantId: number): Promise<Record<string, EstudioCreado>> {
   const creados: Record<string, EstudioCreado> = {};
+  const laboratorios: Record<string, number> = {};
 
   for (const def of ESTUDIOS) {
+    if (def.laboratorioExterno === null || laboratorios[def.laboratorioExterno] !== undefined) continue;
+    const laboratorio = await tx.externalLab.create({ data: { tenantId, name: def.laboratorioExterno } });
+    laboratorios[def.laboratorioExterno] = laboratorio.id;
+  }
+
+  for (const def of ESTUDIOS) {
+    let laboratorioId: number | null = null;
+    if (def.laboratorioExterno !== null) laboratorioId = laboratorios[def.laboratorioExterno];
     const estudio = await tx.testCatalog.create({
       data: {
         tenantId,
@@ -152,9 +165,12 @@ async function crearCatalogo(tx: Tx, tenantId: number): Promise<Record<string, E
         sampleType: def.muestra,
         externalLab: def.laboratorioExterno,
         turnaroundHours: def.horasEntrega,
+        externalLabId: laboratorioId,
+        turnaroundDays: def.diasEntrega ?? null,
+        outsourcingCost: def.maquila ?? null,
       },
     });
-    const creado: EstudioCreado = { id: estudio.id, def, parametros: {}, rangos: [] };
+    const creado: EstudioCreado = { id: estudio.id, laboratorioId, def, parametros: {}, rangos: [] };
 
     for (const instruccion of def.instrucciones) {
       await tx.studyInstruction.create({
@@ -377,6 +393,7 @@ export async function sembrarDemo(prisma: PrismaClient): Promise<ResumenDemo> {
       });
 
       const consecutivos: Record<string, number> = {};
+      const enviosPorDia: Record<string, number> = {};
       const creadas: OrdenCreada[] = [];
 
       for (const def of ordenadas) {
@@ -435,6 +452,23 @@ export async function sembrarDemo(prisma: PrismaClient): Promise<ResumenDemo> {
             data: { orderId: orden.id, testId: estudio.id, price: estudio.def.precio },
           });
           if (tiposDeMuestra.indexOf(estudio.def.muestra) < 0) tiposDeMuestra.push(estudio.def.muestra);
+
+          if (estudio.laboratorioId !== null) {
+            const prefijo = prefijoDeEnvio(creada);
+            enviosPorDia[prefijo] = (enviosPorDia[prefijo] ?? 0) + 1;
+            await tx.shipmentOrder.create({
+              data: {
+                tenantId,
+                orderId: orden.id,
+                testId: estudio.id,
+                externalLabId: estudio.laboratorioId,
+                folio: folioDeEnvio(creada, enviosPorDia[prefijo]),
+                estimatedDays: estudio.def.diasEntrega ?? 1,
+                outsourcingCost: estudio.def.maquila ?? null,
+                createdAt: creada,
+              },
+            });
+          }
 
           const capturar = def.validados || def.capturados.indexOf(codigo) >= 0;
           if (!capturar) continue;

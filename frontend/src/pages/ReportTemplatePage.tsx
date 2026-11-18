@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { mensajeDeError } from '../compartido/api';
+import { MensajeError } from '../compartido/MensajeError';
 
 interface VersionItem {
   id: number;
@@ -38,6 +40,7 @@ export const ReportTemplatePage: React.FC = () => {
   
   // Estado para el Historial de Versiones
   const [versions, setVersions] = useState<VersionItem[]>([]);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     loadData();
@@ -46,6 +49,7 @@ export const ReportTemplatePage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+      setErrorMessage('');
       const historyRes = await api.get('/templates');
       const historyList: VersionItem[] = historyRes.data || [];
       setVersions(historyList);
@@ -55,7 +59,7 @@ export const ReportTemplatePage: React.FC = () => {
         applyTemplateToForm(active);
       }
     } catch (error) {
-      console.error('Error al cargar historial de plantillas:', error);
+      setErrorMessage(`No se pudo cargar el historial de plantillas. ${mensajeDeError(error)}`);
     } finally {
       setLoading(false);
     }
@@ -79,6 +83,7 @@ export const ReportTemplatePage: React.FC = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
+      setErrorMessage('');
       const parts = signature.split('· Cédula');
       const chemistName = parts[0]?.trim() || signature;
       const chemistCedula = parts[1]?.trim() || '';
@@ -102,7 +107,7 @@ export const ReportTemplatePage: React.FC = () => {
 
       await loadData();
     } catch (error) {
-      console.error('Error al guardar plantilla:', error);
+      setErrorMessage(`No se pudo publicar la plantilla. ${mensajeDeError(error)}`);
     } finally {
       setSaving(false);
     }
@@ -120,6 +125,8 @@ export const ReportTemplatePage: React.FC = () => {
   return (
     <main className="sl-pagina">
       <div className="sl-migas">Resultados / Plantillas / Biometría hemática</div>
+
+          {errorMessage && <MensajeError mensaje={errorMessage} />}
 
           {/* BANNER DE NOTIFICACIÓN DE FIGMA */}
           {notification.show && (

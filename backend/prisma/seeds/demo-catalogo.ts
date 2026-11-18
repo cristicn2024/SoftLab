@@ -36,6 +36,8 @@ export interface EstudioDef {
   muestra: string;
   laboratorioExterno: string | null;
   horasEntrega: number | null;
+  diasEntrega?: number;
+  maquila?: number;
   instrucciones: InstruccionDef[];
   parametros: ParametroDef[];
 }
@@ -231,12 +233,28 @@ export const ESTUDIOS: EstudioDef[] = [
     parametros: [numerico('TSH', 'µUI/mL', '2.1', [rango(null, 18, 120, 0.4, 4, '0.4 – 4.0', null, 20)])],
   },
   {
+    codigo: 'HBA001',
+    nombre: 'Hemoglobina glucosilada (HbA1c)',
+    precio: 320,
+    muestra: MUESTRA_LILA,
+    laboratorioExterno: 'Laboratorio Referencia Nacional',
+    horasEntrega: 72,
+    diasEntrega: 3,
+    maquila: 90,
+    instrucciones: [
+      { tipo: 'text', minHoras: null, maxHoras: null, texto: 'Informar si hubo transfusión reciente' },
+    ],
+    parametros: [numerico('HbA1c', '%', '5.4', [rango(null, 18, 120, 4, 5.6, '4.0 – 5.6')])],
+  },
+  {
     codigo: 'EXT001',
     nombre: 'Vitamina D 25-OH (estudio externo)',
     precio: 700,
     muestra: MUESTRA_AMARILLO,
     laboratorioExterno: 'Laboratorio de Referencia del Norte',
     horasEntrega: 72,
+    diasEntrega: 3,
+    maquila: 380,
     instrucciones: SIN_INSTRUCCIONES,
     parametros: [numerico('Vitamina D 25-OH', 'ng/mL', '45', [rango(null, 18, 120, 30, 100, '30 – 100')])],
   },

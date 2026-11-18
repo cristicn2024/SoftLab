@@ -30,6 +30,12 @@ export class DoctorRegistrationFailedError extends ErrorDeDominio {
   }
 }
 
+export class DoctorListFailedError extends ErrorDeDominio {
+  constructor() {
+    super('Error al consultar los médicos solicitantes');
+  }
+}
+
 export class OrderConfirmationFailedError extends ErrorDeDominio {
   constructor() {
     super('Error al confirmar la orden');

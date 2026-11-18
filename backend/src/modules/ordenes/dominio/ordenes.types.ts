@@ -1,3 +1,5 @@
+import type { EstudioParaEnvio } from '../../externos/dominio/externos.types';
+
 export type ConceptType = 'TEST' | 'PROFILE';
 
 export interface CatalogTest {
@@ -65,6 +67,7 @@ export interface NewOrderData {
   items: NewOrderItem[];
   preAnalyticalSnapshot?: unknown;
   exceptionApprovals?: { testId: number; reason: string; authorizedByName: string; authorizedById?: number }[];
+  externalStudies?: EstudioParaEnvio[];
 }
 
 export interface RawOrderInput {
@@ -75,10 +78,12 @@ export interface RawOrderInput {
   totalAmount?: unknown;
   preAnalyticalSnapshot?: unknown;
   exceptionApprovals?: { testId: number; reason: string; authorizedByName: string; authorizedById?: number }[];
+  externalStudies?: EstudioParaEnvio[];
 }
 
 export interface CreatedOrder {
   success: true;
   folio: string;
   orderId: number;
+  shipmentFolios: string[];
 }

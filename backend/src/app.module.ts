@@ -1,5 +1,6 @@
 import { ReferenciasModule } from './modules/referencias/referencias.module';
 import { CatalogoModule } from './modules/catalogo/catalogo.module';
+import { ExternosModule } from './modules/externos/externos.module';
 import { Module } from '@nestjs/common';
 import { HealthModule } from './health/health.module';
 import { CorteCajaModule } from './modules/corte-caja/corte-caja.module';
@@ -11,7 +12,7 @@ import { WorklistModule } from './modules/worklist/worklist.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [ReferenciasModule, CatalogoModule, PrismaModule, HealthModule, WorklistModule, CobroModule, PlantillasModule, ReportesModule, OrdenesModule, CorteCajaModule],
+  imports: [ReferenciasModule, CatalogoModule, ExternosModule, PrismaModule, HealthModule, WorklistModule, CobroModule, PlantillasModule, ReportesModule, OrdenesModule, CorteCajaModule],
 })
 export class AppModule {}
 

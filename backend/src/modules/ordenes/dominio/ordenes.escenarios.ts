@@ -101,6 +101,18 @@ export class FakeRepository implements OrdenesRepository {
     return doctor;
   }
 
+  async findDoctors(tenantId: number): Promise<Doctor[]> {
+    this.check();
+    const lista: Doctor[] = [];
+    for (const doctor of this.doctors) {
+      if (doctor.tenantId === tenantId) lista.push(doctor);
+    }
+    lista.sort(function porNombre(a, b) {
+      return a.name.localeCompare(b.name);
+    });
+    return lista;
+  }
+
   async countOrdersSince(tenantId: number, since: Date): Promise<number> {
     this.check();
     let count = 0;

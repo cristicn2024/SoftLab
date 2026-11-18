@@ -47,3 +47,11 @@ test('deniega restricciones cuando sexo no es determinable', () => {
   assert.equal(esIncompatible('F', 'M'), true);
   assert.equal(esIncompatible('F', 'F'), false);
 });
+
+test('avisa qué estudios se envían a laboratorio externo y cuántos días tardan', () => {
+  const result = consolidarPreanalitica([
+    study(1),
+    study(2, { code: 'HBA001', name: 'Hemoglobina glucosilada (HbA1c)', externalLabRef: { name: 'Laboratorio Referencia Nacional' }, turnaroundDays: 3 }),
+  ]);
+  assert.deepEqual(result.externos, [{ code: 'HBA001', name: 'Hemoglobina glucosilada (HbA1c)', laboratorio: 'Laboratorio Referencia Nacional', dias: 3 }]);
+});

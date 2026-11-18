@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ErrorDeDominio } from '../../../comun/errores';
 import {
+  DoctorListFailedError,
   BranchRequiredError,
   ConceptSearchFailedError,
   DoctorRegistrationFailedError,
@@ -211,5 +212,28 @@ test('todos los errores de órdenes son errores de dominio', () => {
     new OrderConfirmationFailedError(),
   ]) {
     assert.ok(error instanceof ErrorDeDominio);
+  }
+});
+
+test('lista los médicos del laboratorio ordenados por nombre y sin mezclar laboratorios', async () => {
+  const { service } = setup();
+  await service.registerDoctor({ tenantId: 1, name: 'Dr. Ernesto Salas' });
+  await service.registerDoctor({ tenantId: 2, name: 'Dra. De Otro Laboratorio' });
+  await service.registerDoctor({ tenantId: 1, name: 'Dra. Ana Ruiz' });
+  const medicos = await service.listDoctors(1);
+  assert.equal(medicos.length, 2);
+  assert.equal(medicos[0].name, 'Dr. Ernesto Salas');
+  assert.equal(medicos[1].name, 'Dra. Ana Ruiz');
+});
+
+test('si falla la consulta de médicos responde con su error de dominio', async () => {
+  const { repository, service } = setup();
+  repository.failWith = new Error('db down');
+  const consola = console.error;
+  console.error = () => undefined;
+  try {
+    await assert.rejects(service.listDoctors(1), DoctorListFailedError);
+  } finally {
+    console.error = consola;
   }
 });

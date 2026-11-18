@@ -4,7 +4,20 @@ type Estudio = {
   preparationInstructions: string | null; medicationWarnings: string | null; additionalInstructions: string | null;
   genderRestriction: string;
   instructions?: { type: string; minHours: number | null; maxHours: number | null; text: string }[];
+  externalLabRef?: { name: string } | null;
+  turnaroundDays?: number | null;
 };
+
+function estudiosExternos(estudios: Estudio[]) {
+  const externos: { code: string; name: string; laboratorio: string; dias: number | null }[] = [];
+  for (const estudio of estudios) {
+    if (estudio.externalLabRef === undefined || estudio.externalLabRef === null) continue;
+    let dias: number | null = null;
+    if (estudio.turnaroundDays !== undefined) dias = estudio.turnaroundDays;
+    externos.push({ code: estudio.code, name: estudio.name, laboratorio: estudio.externalLabRef.name, dias });
+  }
+  return externos;
+}
 
 export function consolidarPreanalitica(estudios: Estudio[]) {
   const muestras = new Map<string, Estudio[]>();
@@ -56,6 +69,7 @@ export function consolidarPreanalitica(estudios: Estudio[]) {
     preparacion: textos('preparationInstructions', 'first_urine'),
     medicamentos: textos('medicationWarnings', 'medication'),
     adicionales: textos('additionalInstructions', 'text'),
+    externos: estudiosExternos(estudios),
     conflictos: [
       ...(condicionesAyuno.length > 1 ? ['Los estudios indican horas de ayuno distintas; revisar las condiciones aplicables antes de continuar.'] : []),
       ...(gruposMuestra.length > 1 ? ['La orden requiere distintos tipos de muestra o contenedores.'] : []),

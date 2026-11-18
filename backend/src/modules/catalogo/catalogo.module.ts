@@ -5,6 +5,8 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { UsuarioActual } from '../../auth/decoradores/usuario-actual.decorator';
 import { Roles } from '../../auth/decoradores/roles.decorator';
 import type { Sesion } from '../../auth/dominio/sesion';
+import { leerDatosExternos } from '../externos/dominio/externos.rules';
+import { LaboratorioExternoNoValidoError } from '../externos/dominio/externos.errors';
 
 @Controller('catalogo')
 export class CatalogoController {
@@ -78,6 +80,7 @@ export class CatalogoController {
         additionalInstructions: optionalText('additionalInstructions', 4000),
       };
     })() : null;
+    const externos = kind === 'studies' ? leerDatosExternos(body) : undefined;
     const testIds = kind === 'profiles' && Array.isArray(body.testIds) ? [...new Set(body.testIds)] : [];
     if (kind === 'profiles' && (!testIds.length || testIds.some(v => !Number.isSafeInteger(v) || Number(v) <= 0))) throw new BadRequestException('Selecciona al menos un estudio');
 
@@ -101,6 +104,15 @@ export class CatalogoController {
         if (kind === 'profiles' && studies.filter(t => testIds.includes(t.id)).length !== testIds.length) throw new BadRequestException('Estudio ajeno al laboratorio o inexistente');
         let after;
         if (study) {
+          if (externos !== undefined) {
+            let nombreLaboratorio: string | null = null;
+            if (externos.externalLabId !== null) {
+              const laboratorio = await tx.externalLab.findFirst({ where: { id: externos.externalLabId, tenantId: sesion.tenantId, active: true } });
+              if (laboratorio === null) throw new LaboratorioExternoNoValidoError();
+              nombreLaboratorio = laboratorio.name;
+            }
+            Object.assign(study, { ...externos, externalLab: nombreLaboratorio });
+          }
           after = id
             ? await tx.testCatalog.update({ where: { id }, data: { ...data, ...study } })
             : await tx.testCatalog.create({ data: { ...data, ...study, ...where } });

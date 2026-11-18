@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { DuplicateFolioError } from '../dominio/ordenes.errors';
 import type { OrdenesRepository } from '../dominio/ordenes.repository';
+import { armarEnvios, prefijoDeEnvio } from '../../externos/dominio/externos.rules';
 import type {
   CatalogProfile,
   CatalogTest,
@@ -79,6 +80,10 @@ export class OrdenesPrismaRepository implements OrdenesRepository {
     });
   }
 
+  findDoctors(tenantId: number): Promise<Doctor[]> {
+    return this.prisma.doctor.findMany({ where: { tenantId }, orderBy: { name: 'asc' } });
+  }
+
   createDoctor(data: NewDoctorData): Promise<Doctor> {
     return this.prisma.doctor.create({
       data: {
@@ -98,7 +103,7 @@ export class OrdenesPrismaRepository implements OrdenesRepository {
     return this.prisma.order.count({ where: { folio: { startsWith: prefix } } });
   }
 
-  async createOrder(data: NewOrderData): Promise<{ id: number }> {
+  async createOrder(data: NewOrderData): Promise<{ id: number; shipmentFolios: string[] }> {
     const orderData: Prisma.OrderUncheckedCreateInput = {
       tenantId: data.tenantId,
       branchId: data.branchId,
@@ -123,7 +128,27 @@ export class OrdenesPrismaRepository implements OrdenesRepository {
             authorizedById: approval.authorizedById ?? null,
           })) });
         }
-        return { id: order.id };
+        const shipmentFolios: string[] = [];
+        if (data.externalStudies !== undefined && data.externalStudies.length > 0) {
+          const ahora = new Date();
+          const enviosDelDia = await tx.shipmentOrder.count({ where: { folio: { startsWith: prefijoDeEnvio(ahora) } } });
+          const envios = armarEnvios(data.externalStudies, ahora, enviosDelDia);
+          for (const envio of envios) {
+            await tx.shipmentOrder.create({
+              data: {
+                tenantId: data.tenantId,
+                orderId: order.id,
+                testId: envio.testId,
+                externalLabId: envio.externalLabId,
+                folio: envio.folio,
+                estimatedDays: envio.estimatedDays,
+                outsourcingCost: envio.outsourcingCost,
+              },
+            });
+            shipmentFolios.push(envio.folio);
+          }
+        }
+        return { id: order.id, shipmentFolios };
       });
     } catch (error) {
       if (isDuplicateFolio(error)) throw new DuplicateFolioError();

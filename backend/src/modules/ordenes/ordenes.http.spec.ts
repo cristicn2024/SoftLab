@@ -53,6 +53,16 @@ describe('API de nueva orden', () => {
     expect(res.body.error.mensaje).toBe('Falta el encabezado x-tenant-id con el id del laboratorio.');
   });
 
+  it('lista los médicos solicitantes del laboratorio para el select de Nueva orden', async () => {
+    await request(app.getHttpServer()).post('/api/doctors/express').set(TENANT).send({ name: 'Dra. Patricia Ruiz' });
+    await request(app.getHttpServer()).post('/api/doctors/express').set({ 'x-tenant-id': '2' }).send({ name: 'Dr. Ajeno' });
+    const res = await request(app.getHttpServer()).get('/api/doctors').set(TENANT);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].name).toBe('Dra. Patricia Ruiz');
+    expect((await request(app.getHttpServer()).get('/api/doctors')).status).toBe(400);
+  });
+
   it('busca conceptos con la forma que usa el front y sin mezclar laboratorios', async () => {
     const vacia = await request(app.getHttpServer()).get('/api/concepts/search?q=%20%20').set(TENANT);
     expect(vacia.status).toBe(200);

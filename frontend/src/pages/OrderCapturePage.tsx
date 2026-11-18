@@ -26,8 +26,32 @@ interface Branch { id: number; name: string }
 
 interface OrderPreview {
   patientGender: Patient['gender'];
-  indications: { studies: { id: number; code: string; name: string }[]; muestras: { tipo: string; contenedor: string | null; volumenes: string[]; estudios: string[] }[]; ayunos: { horas: number | null; texto: string; estudios: string[] }[]; preparacion: { texto: string; estudios: string[] }[]; medicamentos: { texto: string; estudios: string[] }[]; adicionales: { texto: string; estudios: string[] }[]; conflictos: string[] };
+  indications: { studies: { id: number; code: string; name: string }[]; muestras: { tipo: string; contenedor: string | null; volumenes: string[]; estudios: string[] }[]; ayunos: { horas: number | null; texto: string; estudios: string[] }[]; preparacion: { texto: string; estudios: string[] }[]; medicamentos: { texto: string; estudios: string[] }[]; adicionales: { texto: string; estudios: string[] }[]; conflictos: string[]; externos?: { code: string; name: string; laboratorio: string; dias: number | null }[] };
   incompatibleStudies: { testId: number; code: string; name: string; reason: string }[];
+}
+
+function avisoDeExterno(externo: { code: string; name: string; laboratorio: string; dias: number | null }): string {
+  let texto = `${externo.code} · ${externo.name} se envía a ${externo.laboratorio}. El resultado puede tardar más`;
+  if (externo.dias === 1) texto = `${texto} (entrega estimada: 1 día)`;
+  if (externo.dias !== null && externo.dias > 1) texto = `${texto} (entrega estimada: ${externo.dias} días)`;
+  return `${texto}.`;
+}
+
+function mensajeDelServidor(error: unknown, porDefecto: string): string {
+  const detalle = (error as { response?: { data?: { error?: string | { mensaje?: string | string[] } } } }).response?.data?.error;
+  if (typeof detalle === 'string' && detalle) return detalle;
+  if (detalle && typeof detalle === 'object') {
+    if (typeof detalle.mensaje === 'string' && detalle.mensaje) return detalle.mensaje;
+    if (Array.isArray(detalle.mensaje) && detalle.mensaje.length > 0) return detalle.mensaje[0];
+  }
+  return porDefecto;
+}
+
+const ENCABEZADOS_USUARIO = { 'x-user-name': encodeURIComponent(SESION.usuario), 'x-user-role': encodeURIComponent(SESION.rol) };
+
+function textoDeEnvios(folios: string[] | undefined): string {
+  if (folios === undefined || folios.length === 0) return '';
+  return `\nÓrdenes de envío a laboratorio externo: ${folios.join(', ')}`;
 }
 
 export const OrderCapturePage: React.FC = () => {
@@ -48,6 +72,7 @@ export const OrderCapturePage: React.FC = () => {
   const [newDoctorName, setNewDoctorName] = useState<string>('');
   const [newDoctorCedula, setNewDoctorCedula] = useState<string>('');
   const [newDoctorSpecialty, setNewDoctorSpecialty] = useState<string>('');
+  const [doctorsError, setDoctorsError] = useState<string>('');
 
   // Búsqueda Predictiva y Conceptos de la Orden
   const [query, setQuery] = useState<string>('');
@@ -73,20 +98,20 @@ export const OrderCapturePage: React.FC = () => {
     return () => { active = false; };
   }, [patientSearch]);
 
-  // 1. Cargar médicos y validar si el paciente tiene orden abierta hoy
   useEffect(() => {
-    loadDoctors();
+    let active = true;
+    api.get('/doctors').then((res) => {
+      if (active) { setDoctors(res.data ?? []); setDoctorsError(''); }
+    }).catch((error) => {
+      if (active) setDoctorsError(mensajeDelServidor(error, 'No se pudieron consultar los médicos solicitantes.'));
+    });
+    return () => { active = false; };
+  }, []);
+
+  // 1. Validar si el paciente tiene orden abierta hoy
+  useEffect(() => {
     checkOpenOrder();
   }, [patient?.id]);
-
-  const loadDoctors = async () => {
-    try {
-      const res = await api.get('/doctors');
-      setDoctors(res.data || []);
-    } catch {
-      // Si no existe el endpoint aún, dejamos la opción por defecto
-    }
-  };
 
   const checkOpenOrder = async () => {
     if (!patient) return;
@@ -104,8 +129,7 @@ export const OrderCapturePage: React.FC = () => {
     api.post('/orders/indications/preview', { patientId: patient.id, items: orderItems }).then((res) => {
       if (active) { setPreview(res.data); setPreviewError(''); setExceptionReasons({}); setInstructionReviewConfirmed(false); }
     }).catch((error) => {
-      const message = error?.response?.data?.message;
-      if (active) setPreviewError(typeof message === 'string' ? message : 'No se pudieron calcular las indicaciones de la orden.');
+      if (active) setPreviewError(mensajeDelServidor(error, 'No se pudieron calcular las indicaciones de la orden.'));
     });
     return () => { active = false; };
   }, [patient?.id, orderItems]);
@@ -113,7 +137,7 @@ export const OrderCapturePage: React.FC = () => {
   // 2. Autocompletado predictivo
   useEffect(() => {
     if (query.trim().length > 1) {
-      api.get(`/concepts/search?q=${query}`).then((res) => {
+      api.get('/concepts/search', { params: { q: query } }).then((res) => {
         setSuggestions(res.data);
         setSelectedIndex(0);
       }).catch(() => setSuggestions([]));
@@ -204,8 +228,8 @@ const addConcept = (concept: Concept) => {
       setNewDoctorName('');
       setNewDoctorCedula('');
       setNewDoctorSpecialty('');
-    } catch {
-      alert('Error al registrar médico');
+    } catch (error) {
+      alert(mensajeDelServidor(error, 'Error al registrar médico'));
     }
   };
 
@@ -226,13 +250,13 @@ const addConcept = (concept: Concept) => {
         totalAmount,
         reviewedInstructionConflicts: instructionReviewConfirmed,
         exceptionApprovals: approvals,
-      });
-      alert(`¡Orden capturada exitosamente! Folio: ${res.data.folio}`);
+      }, { headers: ENCABEZADOS_USUARIO });
+      alert(`¡Orden capturada exitosamente! Folio: ${res.data.folio}${textoDeEnvios(res.data.shipmentFolios)}`);
       setOrderItems([]);
       setWarnings([]);
       setPreview(null);
-    } catch {
-      alert('Error al registrar la orden');
+    } catch (error) {
+      alert(mensajeDelServidor(error, 'Error al registrar la orden'));
     }
   };
 
@@ -289,11 +313,12 @@ const addConcept = (concept: Concept) => {
                   <option value="particular">Particular (sin médico)</option>
                   {doctors.map((doc) => (
                     <option key={doc.id} value={doc.id}>
-                      Dr. {doc.name}
+                      {doc.name}
                     </option>
                   ))}
                 </select>
                 <span style={styles.fieldNote}>Opcional. Busca o registra al médico sin salir de la orden.</span>
+                {doctorsError && <span role="alert" style={styles.fieldNote}>{doctorsError}</span>}
               </div>
 
               {/* Columna Búsqueda Predictiva */}
@@ -356,6 +381,7 @@ const addConcept = (concept: Concept) => {
             {preview.indications.muestras.map((sample, index) => <p key={`sample-${index}`}><strong>Muestra:</strong> {sample.tipo}{sample.contenedor ? ` · ${sample.contenedor}` : ''}{sample.volumenes.length ? ` · ${sample.volumenes.join(', ')}` : ''} <small>({sample.estudios.join(', ')})</small></p>)}
             {preview.indications.ayunos.map((fast, index) => <p key={`fast-${index}`}><strong>Ayuno:</strong> {fast.horas == null ? fast.texto : fast.horas === 0 ? 'No se requiere ayuno' : `${fast.horas} horas`} <small>({fast.estudios.join(', ')})</small></p>)}
             {[...preview.indications.preparacion, ...preview.indications.medicamentos, ...preview.indications.adicionales].map((instruction, index) => <p key={`text-${index}`}>{instruction.texto} <small>({instruction.estudios.join(', ')})</small></p>)}
+            {(preview.indications.externos ?? []).map((externo) => <p role="note" key={`ext-${externo.code}`}><strong>Laboratorio externo:</strong> {avisoDeExterno(externo)}</p>)}
             {preview.indications.conflictos.map((conflict) => <p role="alert" key={conflict}>Revisión requerida: {conflict}</p>)}
             {preview.indications.conflictos.length > 0 && <label><input type="checkbox" checked={instructionReviewConfirmed} onChange={(e) => setInstructionReviewConfirmed(e.target.checked)} /> Confirmo que revisé los requisitos configurados con conflicto.</label>}
             {preview.incompatibleStudies.map((study) => <div role="alert" key={study.testId} style={styles.warningBox}>

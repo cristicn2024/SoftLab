@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { SESION } from '../compartido/sesion';
 
@@ -18,6 +19,7 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
   const [audits, setAudits] = useState<Audit[]>([]);
   const [showAudit, setShowAudit] = useState(false);
   const admin = ['admin', 'Administradora', 'Administrador'].includes(SESION.rol);
+  const verBitacora = (useLocation().state as { verBitacora?: boolean } | null)?.verBitacora === true;
   const message = (e: unknown) => {
     const body = (e as { response?: { data?: { message?: string; error?: string | { mensaje?: string } } } }).response?.data;
     return body?.message ?? (typeof body?.error === 'string' ? body.error : body?.error?.mensaje) ?? 'No se pudo completar la operación';
@@ -27,8 +29,9 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
     let active = true;
     setEditing(false); setShowAudit(false); setError('');
     api.get('/catalogo', { headers }).then(r => { if (active) setCatalog(r.data); }).catch(e => { if (active) setError(message(e)); });
+    if (verBitacora && kind === 'studies') api.get('/catalogo/bitacora', { headers }).then(r => { if (active) { setAudits(r.data); setShowAudit(true); } }).catch(e => { if (active) setError(message(e)); });
     return () => { active = false; };
-  }, [kind]);
+  }, [kind, verBitacora]);
   function edit(item?: Study | Profile) {
     setId(item?.id);
     setDraft(item ? { code: item.code, name: item.name, price: String(item.price), status: item.status,
@@ -48,7 +51,8 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
   return <main className="sl-pagina">
     <h1>{kind === 'studies' ? 'Estudios' : 'Perfiles'}</h1>
     {admin && <><button onClick={() => edit()}>Crear {kind === 'studies' ? 'estudio' : 'perfil'}</button>{' '}
-      <button onClick={async () => { try { setAudits((await api.get('/catalogo/bitacora', { headers })).data); setShowAudit(true); } catch (e) { setError(message(e)); } }}>Ver bitácora</button></>}
+      <button onClick={async () => { try { setAudits((await api.get('/catalogo/bitacora', { headers })).data); setShowAudit(true); } catch (e) { setError(message(e)); } }}>Ver bitácora</button>{' '}
+      {kind === 'studies' && <Link to="/catalogo/estudios/externos">Estudios externos</Link>}</>}
     {error && <p role="alert">{error}</p>}
     {editing && <form onSubmit={save} style={{ display: 'grid', gap: 12, maxWidth: 640, margin: '24px 0' }}>
       <h2>{id ? 'Editar' : 'Crear'} {kind === 'studies' ? 'estudio' : 'perfil'}</h2>
@@ -79,7 +83,7 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
     <table style={{ width: '100%', marginTop: 24, textAlign: 'left' }}><thead><tr><th>Clave</th><th>Nombre</th><th>Detalle</th><th>Estatus</th><th>Acciones</th></tr></thead>
       <tbody>{catalog[kind].map(item => <tr key={item.id}><td>{item.code}</td><td>{item.name}</td>
         <td>{'tests' in item ? <>{item.tests.map(t => t.test.name).join(', ')}{item.tests.some(t => !t.test.status) && <p role="alert">Incluye estudios inactivos</p>}</> : <>{item.department} · {item.sampleType} · {item.genderRestriction === 'F' ? 'Femenino' : item.genderRestriction === 'M' ? 'Masculino' : 'Ambos'}</>}</td>
-        <td>{item.status ? 'Activo' : 'Inactivo'}</td><td>{admin && <button onClick={() => edit(item)}>Editar / desactivar</button>}</td></tr>)}</tbody>
+        <td>{item.status ? 'Activo' : 'Inactivo'}</td><td>{admin && ('tests' in item ? <button onClick={() => edit(item)}>Editar / desactivar</button> : <Link to={`/catalogo/estudios/${item.id}/editar`}>Editar / desactivar</Link>)}</td></tr>)}</tbody>
     </table>
     {catalog[kind].length === 0 && <p>Aún no hay registros.</p>}
     {showAudit && <section><h2>Bitácora de cambios</h2>{audits.map(a => <details key={a.id}><summary>{new Date(a.createdAt).toLocaleString()} · {a.userName}</summary><h3>Valor anterior</h3><pre>{JSON.stringify(a.before, null, 2)}</pre><h3>Valor nuevo</h3><pre>{JSON.stringify(a.after, null, 2)}</pre></details>)}</section>}

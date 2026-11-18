@@ -91,6 +91,8 @@ model Tenant {
   criticalNotifications    CriticalNotification[]
   instructions    StudyInstruction[]
   studyAdmissionExceptions StudyAdmissionException[]
+  externalLabs    ExternalLab[]
+  shipmentOrders  ShipmentOrder[]
 
   @@map("tenants")
 }
@@ -201,6 +203,9 @@ model TestCatalog {
   referenceRange    String?  @map("reference_range") @db.Text
   externalLab       String?  @map("external_lab") @db.VarChar(150)
   turnaroundHours   Int?     @map("turnaround_hours")
+  externalLabId     Int?     @map("external_lab_id")
+  turnaroundDays    Int?     @map("turnaround_days")
+  outsourcingCost   Decimal? @map("outsourcing_cost") @db.Decimal(10, 2)
   createdAt         DateTime @default(now()) @map("created_at")
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -210,7 +215,10 @@ model TestCatalog {
   parameters   TestParameter[]
   ranges       ReferenceRange[]
   admissionExceptions StudyAdmissionException[]
+  externalLabRef ExternalLab? @relation(fields: [externalLabId], references: [id], onDelete: SetNull)
+  shipmentOrders ShipmentOrder[]
 
+  @@index([externalLabId])
   @@unique([tenantId, code], name: "uq_tenant_test_code")
   @@map("test_catalog")
 }
@@ -281,6 +289,7 @@ model Order {
   doctor       Doctor?       @relation(fields: [doctorId], references: [id])
   cashier      User?         @relation("OrderCashier", fields: [cashierId], references: [id], onDelete: SetNull)
   items        OrderItem[]
+  shipmentOrders ShipmentOrder[]
   samples      Sample[]
   orderReports OrderReport[]
   payments     Payment[]
@@ -680,4 +689,44 @@ model ReferenceVersion {
  createdAt DateTime @default(now()) @map("created_at")
  @@unique([tenantId, parameterId, effectiveFrom])
  @@map("reference_versions")
+}
+
+// HU 1.6 · Estudios enviados a laboratorio externo
+model ExternalLab {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @map("tenant_id")
+  name      String   @db.VarChar(150)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tests     TestCatalog[]
+  shipments ShipmentOrder[]
+
+  @@unique([tenantId, name])
+  @@map("external_labs")
+}
+
+model ShipmentOrder {
+  id              Int      @id @default(autoincrement())
+  tenantId        Int      @map("tenant_id")
+  orderId         Int      @map("order_id")
+  testId          Int      @map("test_id")
+  externalLabId   Int      @map("external_lab_id")
+  folio           String   @unique @db.VarChar(40)
+  estimatedDays   Int      @map("estimated_days")
+  outsourcingCost Decimal? @map("outsourcing_cost") @db.Decimal(10, 2)
+  status          String   @default("pendiente") @db.VarChar(20)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  test        TestCatalog @relation(fields: [testId], references: [id], onDelete: Cascade)
+  externalLab ExternalLab @relation(fields: [externalLabId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([orderId])
+  @@index([testId])
+  @@index([externalLabId])
+  @@map("shipment_orders")
 }

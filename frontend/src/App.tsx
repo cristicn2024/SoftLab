@@ -15,6 +15,8 @@ const PaginaListaDeTrabajo = lazy(() => import('./features/lista-de-trabajo/Pagi
 const PaginaCapturaDeResultados = lazy(() => import('./features/lista-de-trabajo/PaginaCapturaDeResultados'))
 
 const PaginaEntrega = lazy(() => import('./features/entrega/PaginaEntrega'))
+const PaginaEditarEstudio = lazy(() => import('./features/catalogo-estudios/PaginaEditarEstudio'))
+const PaginaEstudiosExternos = lazy(() => import('./features/catalogo-estudios/PaginaEstudiosExternos'))
 
 export default function App() {
   return (
@@ -25,6 +27,8 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="resultados/referencias" element={<ReferenciasPage />} />
               <Route path="catalogo/estudios" element={<CatalogoPage kind="studies" />} />
+              <Route path="catalogo/estudios/externos" element={<PaginaEstudiosExternos />} />
+              <Route path="catalogo/estudios/:idEstudio/editar" element={<PaginaEditarEstudio />} />
               <Route path="catalogo/perfiles" element={<CatalogoPage kind="profiles" />} />
               <Route path="/" element={<Navigate to="/recepcion/nueva-orden" replace />} />
               <Route path="recepcion/nueva-orden" element={<OrderCapturePage />} />

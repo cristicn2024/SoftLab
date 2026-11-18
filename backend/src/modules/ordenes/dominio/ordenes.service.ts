@@ -2,6 +2,7 @@ import { ErrorDeDominio } from '../../../comun/errores';
 import {
   BranchRequiredError,
   ConceptSearchFailedError,
+  DoctorListFailedError,
   DoctorRegistrationFailedError,
   DuplicateFolioError,
   OpenOrderLookupFailedError,
@@ -64,6 +65,16 @@ export class OrdenesService {
     }
   }
 
+  async listDoctors(tenantId: number): Promise<Doctor[]> {
+    try {
+      return await this.repository.findDoctors(tenantId);
+    } catch (error) {
+      if (error instanceof ErrorDeDominio) throw error;
+      console.error('Error en listDoctors:', error);
+      throw new DoctorListFailedError();
+    }
+  }
+
   async registerDoctor(data: NewDoctorData): Promise<Doctor> {
     try {
       return await this.repository.createDoctor(data);
@@ -100,8 +111,11 @@ export class OrdenesService {
             items,
             preAnalyticalSnapshot: input.preAnalyticalSnapshot,
             exceptionApprovals: input.exceptionApprovals,
+            externalStudies: input.externalStudies,
           });
-          return { success: true, folio, orderId: created.id };
+          let shipmentFolios: string[] = [];
+          if (created.shipmentFolios !== undefined) shipmentFolios = created.shipmentFolios;
+          return { success: true, folio, orderId: created.id, shipmentFolios };
         } catch (error) {
           if (!(error instanceof DuplicateFolioError)) throw error;
           // El folio es único en toda la base: si ya lo tomó otra orden (otra sucursal,

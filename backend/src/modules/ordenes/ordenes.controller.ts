@@ -7,6 +7,18 @@ import { CrearOrdenDto } from './dto/crear-orden.dto';
 import { RegistrarMedicoDto } from './dto/registrar-medico.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { consolidarPreanalitica, esIncompatible } from './dominio/preanalitica';
+import type { EstudioParaEnvio } from '../externos/dominio/externos.types';
+
+function estudiosParaEnvio(estudios: { id: number; externalLabId: number | null; turnaroundDays: number | null; outsourcingCost: unknown }[]): EstudioParaEnvio[] {
+  const lista: EstudioParaEnvio[] = [];
+  for (const estudio of estudios) {
+    if (estudio.externalLabId === null) continue;
+    let costo: number | null = null;
+    if (estudio.outsourcingCost !== null && estudio.outsourcingCost !== undefined) costo = Number(estudio.outsourcingCost);
+    lista.push({ testId: estudio.id, externalLabId: estudio.externalLabId, turnaroundDays: estudio.turnaroundDays, outsourcingCost: costo });
+  }
+  return lista;
+}
 
 @ApiTags('ordenes')
 @Controller()
@@ -31,7 +43,8 @@ export class OrdenesController {
 
   @Post('orders/indications/preview')
   async previsualizarIndicaciones(@UsuarioActual() sesion: Sesion, @Body() body: Record<string, unknown>) {
-    return this.evaluarOrden(sesion.tenantId, body);
+    const evaluacion = await this.evaluarOrden(sesion.tenantId, body);
+    return { patientGender: evaluacion.patientGender, indications: evaluacion.indications, incompatibleStudies: evaluacion.incompatibleStudies };
   }
 
   @Get('orders/:orderId/indications')
@@ -51,6 +64,11 @@ export class OrdenesController {
   @Get('orders/check-open')
   ordenAbierta(@UsuarioActual() sesion: Sesion, @Query('patientId') patientId: unknown) {
     return this.servicio.checkOpenOrder(sesion.tenantId, patientId, new Date());
+  }
+
+  @Get('doctors')
+  medicos(@UsuarioActual() sesion: Sesion) {
+    return this.servicio.listDoctors(sesion.tenantId);
   }
 
   @Post('doctors/express')
@@ -103,6 +121,7 @@ export class OrdenesController {
       ...dto,
       preAnalyticalSnapshot: preAnalitica.indications,
       exceptionApprovals: approvals,
+      externalStudies: preAnalitica.externalStudies,
     }, new Date());
     return { ...created, indications: preAnalitica.indications };
   }
@@ -125,8 +144,8 @@ export class OrdenesController {
       else throw new BadRequestException('Tipo de concepto inválido');
     }
     const [tests, profiles] = await Promise.all([
-      this.prisma.testCatalog.findMany({ where: { tenantId, id: { in: [...new Set(testIds)] }, status: true }, include: { instructions: true } }),
-      this.prisma.profileCatalog.findMany({ where: { tenantId, id: { in: [...new Set(profileIds)] }, status: true }, include: { tests: { include: { test: { include: { instructions: true } } } } } }),
+      this.prisma.testCatalog.findMany({ where: { tenantId, id: { in: [...new Set(testIds)] }, status: true }, include: { instructions: true, externalLabRef: true } }),
+      this.prisma.profileCatalog.findMany({ where: { tenantId, id: { in: [...new Set(profileIds)] }, status: true }, include: { tests: { include: { test: { include: { instructions: true, externalLabRef: true } } } } } }),
     ]);
     if (tests.length !== new Set(testIds).size || profiles.length !== new Set(profileIds).size) throw new BadRequestException('Uno o más estudios o perfiles no existen o están inactivos en este laboratorio');
     const all = new Map<number, (typeof tests)[number]>();
@@ -136,6 +155,6 @@ export class OrdenesController {
     profiles.forEach((profile) => profile.tests.forEach(({ test }) => all.set(test.id, test)));
     const studies = [...all.values()];
     const incompatibleStudies = studies.filter((study) => esIncompatible(patient.gender, study.genderRestriction)).map((study) => ({ testId: study.id, code: study.code, name: study.name, reason: patient.gender === 'Other' ? 'El sexo del paciente no permite determinar compatibilidad con la restricción del estudio' : `El estudio aplica a ${study.genderRestriction === 'F' ? 'sexo femenino' : 'sexo masculino'}` }));
-    return { patientGender: patient.gender, indications: consolidarPreanalitica(studies), incompatibleStudies };
+    return { patientGender: patient.gender, indications: consolidarPreanalitica(studies), incompatibleStudies, externalStudies: estudiosParaEnvio(studies) };
   }
 }

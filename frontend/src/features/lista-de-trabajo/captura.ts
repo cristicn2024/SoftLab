@@ -1,6 +1,6 @@
 import { interpretResult } from '../results/interpretation.ts'
 import type { Flag, RangeRule } from '../results/interpretation.ts'
-import type { EntradaResultado, OrdenDeLista, ParametroPendiente } from './tipos.ts'
+import type { EntradaResultado, NotificacionCritica, OrdenDeLista, ParametroPendiente } from './tipos.ts'
 
 export type ValorPreparado = { ok: true; valor: string } | { ok: false; mensaje: string }
 
@@ -36,7 +36,17 @@ export function hayParametrosSinRango(pendientes: ParametroPendiente[]): boolean
   return false
 }
 
-export function armarEntradas(pendientes: ParametroPendiente[], valores: Record<string, string>): EntradasArmadas {
+export const NOTIFICACION_INICIAL: NotificacionCritica = { recipient: 'doctor', recipientName: '', contactMethod: 'phone' }
+
+export function esBanderaCritica(bandera: Flag | null): boolean {
+  return bandera === 'HH' || bandera === 'LL'
+}
+
+export function armarEntradas(
+  pendientes: ParametroPendiente[],
+  valores: Record<string, string>,
+  notificaciones: Record<string, NotificacionCritica> = {},
+): EntradasArmadas {
   const entradas: EntradaResultado[] = []
 
   for (const parametro of pendientes) {
@@ -49,14 +59,25 @@ export function armarEntradas(pendientes: ParametroPendiente[], valores: Record<
     }
 
     const bandera = interpretResult(preparado.valor, parametro.rule)
-    if (bandera === 'HH' || bandera === 'LL') {
-      return {
-        ok: false,
-        mensaje: `${parametro.parameterName}: valor crítico (${bandera}). Falta registrar a quién se notificó antes de guardarlo (HU 6.2).`,
-      }
+    const entrada: EntradaResultado = {
+      orderItemId: parametro.orderItemId,
+      parameterId: parametro.parameterId,
+      value: preparado.valor,
     }
 
-    entradas.push({ orderItemId: parametro.orderItemId, parameterId: parametro.parameterId, value: preparado.valor })
+    if (bandera === 'HH' || bandera === 'LL') {
+      const notificacion = notificaciones[claveDe(parametro)]
+      const nombre = notificacion?.recipientName.trim() ?? ''
+      if (notificacion === undefined || nombre === '') {
+        return {
+          ok: false,
+          mensaje: `${parametro.parameterName}: valor crítico (${bandera}). Falta registrar a quién se notificó antes de guardarlo (HU 6.2).`,
+        }
+      }
+      entrada.notification = { ...notificacion, recipientName: nombre }
+    }
+
+    entradas.push(entrada)
   }
 
   if (entradas.length === 0) return { ok: false, mensaje: 'Escribe al menos un resultado.' }

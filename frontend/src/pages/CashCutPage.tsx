@@ -73,6 +73,11 @@ interface SummaryPayload {
     expectedCash: number;
   };
   movements: Movement[];
+  /** Pagos registrados después de cerrar el corte (HU 5.4 CA6); el corte cerrado no cambia. */
+  postClose?: {
+    summary: { cashTotal: number; cardTotal: number; transferTotal: number; totalPaid: number };
+    movements: Movement[];
+  } | null;
 }
 
 const money = (value: number) =>
@@ -946,6 +951,45 @@ export const CashCutPage: React.FC = () => {
                       </table>
                     </div>
                   </section>
+
+                  {closed && data.postClose && data.postClose.movements.length > 0 && (
+                    <section style={styles.card} className="print-card" aria-label="Movimientos posteriores al cierre">
+                      <div style={styles.cardHeadingRow}>
+                        <div>
+                          <h2 style={styles.cardTitle}>Movimientos posteriores al cierre</h2>
+                          <p style={styles.cardHint}>
+                            Pagos registrados después de cerrar este corte. No modifican el corte cerrado ni el
+                            efectivo esperado. Total: {money(data.postClose.summary.totalPaid)}
+                          </p>
+                        </div>
+                        <span style={styles.countBadge}>{data.postClose.movements.length}</span>
+                      </div>
+                      <div style={styles.tableWrap}>
+                        <table style={styles.table}>
+                          <thead>
+                            <tr>
+                              <th style={{ ...styles.th, width: '16%' }}>FOLIO</th>
+                              <th style={{ ...styles.th, width: '34%' }}>PACIENTE</th>
+                              <th style={{ ...styles.th, width: '26%' }}>MÉTODO</th>
+                              <th style={{ ...styles.th, width: '24%', textAlign: 'right' }}>PAGADO</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data.postClose.movements.map(movement => (
+                              <tr key={movement.id}>
+                                <td style={{ ...styles.td, fontFamily: 'monospace' }}>{movement.folio}</td>
+                                <td style={styles.td}>{movement.patient}</td>
+                                <td style={styles.td}>{movement.methodLabel}</td>
+                                <td style={{ ...styles.td, textAlign: 'right', fontWeight: 600 }}>
+                                  {money(movement.payments.reduce((total, payment) => total + payment.amount, 0))}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  )}
 
                   <div
                     style={{

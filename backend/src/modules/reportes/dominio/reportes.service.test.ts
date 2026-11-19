@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ErrorDeDominio } from '../../../comun/errores';
-import { CancelledOrderError, InvalidChannelError, ReleaseOrderNotFoundError, ReportGenerationError } from './reportes.errors';
+import {
+  CancelledOrderError,
+  InvalidChannelError,
+  ReasonTooLongError,
+  ReleaseOrderNotFoundError,
+  ReportGenerationError,
+} from './reportes.errors';
 import { FakeRenderer, FakeRepository, releaseOrder } from './reportes.escenarios';
 import { buildPdfData, parseChannel, pendingBalance, ReportesService } from './reportes.service';
 import type { Actor, Channel, ReleaseOrder } from './reportes.types';
@@ -83,9 +89,15 @@ test('orden cancelada nunca se entrega', async () => {
   assert.equal(renderer.received.length, 0);
 });
 
-test('motivo demasiado largo no autoriza la excepción', async () => {
-  const { service } = setup();
-  assert.equal((await service.release(ADMIN, 7, 'counter', 'a'.repeat(1001), NOW)).kind, 'blocked');
+test('motivo demasiado largo no autoriza la excepción y avisa el límite (QA-09)', async () => {
+  const { renderer, service } = setup();
+  await assert.rejects(service.release(ADMIN, 7, 'counter', 'a'.repeat(1001), NOW), function revisar(error: unknown) {
+    assert.ok(error instanceof ReasonTooLongError);
+    assert.equal((error as Error).message, 'El motivo de la excepción no puede exceder 1000 caracteres');
+    return true;
+  });
+  assert.equal(renderer.received.length, 0);
+  assert.equal((await service.release(ADMIN, 7, 'counter', 'a'.repeat(1000), NOW)).kind, 'released');
 });
 
 test('cada nuevo acceso vuelve a comprobar el saldo', async () => {

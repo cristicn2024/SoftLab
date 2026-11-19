@@ -91,12 +91,14 @@ describe('Pantalla de corte de caja', () => {
     fixture = await createScreenFixture('corte');
     orderCash = await fixture.createOrder({
       createdAt: at(9),
+      paidAt: at(9),
       totalAmount: 100,
       discountAmount: 10,
       payments: [{ method: 'cash', amount: 100 }],
     });
     orderMixed = await fixture.createOrder({
       createdAt: at(10),
+      paidAt: at(10),
       totalAmount: 250,
       payments: [
         { method: 'cash', amount: 200 },
@@ -105,6 +107,7 @@ describe('Pantalla de corte de caja', () => {
     });
     orderTransfer = await fixture.createOrder({
       createdAt: at(11),
+      paidAt: at(11),
       totalAmount: 75,
       payments: [{ method: 'transfer', amount: 75, reference: 'SPEI-1' }],
     });
@@ -112,11 +115,13 @@ describe('Pantalla de corte de caja', () => {
     orderPending = await fixture.createOrder({ createdAt: at(13), totalAmount: 20 });
     orderOutside = await fixture.createOrder({
       createdAt: at(16),
+      paidAt: at(16),
       totalAmount: 999,
       payments: [{ method: 'cash', amount: 999 }],
     });
     orderOtherCashier = await fixture.createOrder({
       createdAt: at(10, 30),
+      paidAt: at(10, 30),
       cashierId: fixture.admin.id,
       totalAmount: 999,
       payments: [{ method: 'cash', amount: 999 }],
@@ -216,6 +221,7 @@ describe('Pantalla de corte de caja', () => {
   it('no cuenta en el corte los pagos anulados desde cobro', async () => {
     const orderVoided = await fixture.createOrder({
       createdAt: new Date(2026, 0, 20, 9, 0, 0, 0),
+      paidAt: new Date(2026, 0, 20, 9, 0, 0, 0),
       totalAmount: 140,
       payments: [{ method: 'cash', amount: 100 }],
     });
@@ -228,6 +234,7 @@ describe('Pantalla de corte de caja', () => {
         method: 'card',
         amount: 40,
         createdBy: 'Cajero corte',
+        createdAt: new Date(2026, 0, 20, 9, 20, 0, 0),
         cancelled: true,
         cancelReason: 'Cobro duplicado',
         cancelledBy: 'Cajero corte',
@@ -333,6 +340,7 @@ describe('Pantalla de corte de caja', () => {
         method: 'cash',
         amount: 50,
         createdBy: 'Cajero corte',
+        createdAt: at(11, 45),
       },
     });
 
@@ -349,6 +357,12 @@ describe('Pantalla de corte de caja', () => {
     expect(res.body.summary.cashTotal).toBe(300);
     expect(res.body.summary.totalPaid).toBe(425);
     expect(res.body.movements.length).toBe(5);
+
+    // QA-06 (HU 5.4 CA6): el pago posterior al cierre se muestra aparte como movimiento nuevo.
+    expect(res.body.postClose.movements.length).toBe(1);
+    expect(res.body.postClose.movements[0].id).toBe(orderCash.id);
+    expect(res.body.postClose.summary.cashTotal).toBe(50);
+    expect(res.body.postClose.summary.totalPaid).toBe(50);
   });
 
   it('lista el historial de cortes cerrados', async () => {

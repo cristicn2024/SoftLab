@@ -1,4 +1,5 @@
 import { FormularioContextoReferencia } from './ContextoReferencia'
+import { Fragment } from 'react'
 import type { KeyboardEvent } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { Aviso } from '../../compartido/Aviso'
@@ -6,9 +7,9 @@ import { Cargando } from '../../compartido/Cargando'
 import { horaDe, palabraSexo, tituloDeRango, unirConY } from '../../compartido/formato'
 import { MensajeError } from '../../compartido/MensajeError'
 import { ResultFlag } from '../../components/ResultFlag'
-import { banderaEnVivo, claveDe, hayParametrosSinRango, nombresDeEstudios } from './captura'
+import { banderaEnVivo, claveDe, esBanderaCritica, hayParametrosSinRango, NOTIFICACION_INICIAL, nombresDeEstudios } from './captura'
 import { RUTA_LISTA } from './rutas'
-import type { OrdenDeLista } from './tipos'
+import type { DestinatarioCritico, MedioDeContacto, OrdenDeLista } from './tipos'
 import { useCapturaDeResultados } from './useCapturaDeResultados'
 
 function claseDeEntrada(bandera: string | null): string {
@@ -24,7 +25,8 @@ function textoDeMuestra(orden: OrdenDeLista): string {
 }
 
 function CapturaDeOrden({ idOrden }: { idOrden: number }) {
-  const { recargarContexto, estado, valores, guardando, mensaje, aviso, cambiarValor, guardar } = useCapturaDeResultados(idOrden)
+  const { recargarContexto, estado, valores, notificaciones, guardando, mensaje, aviso, cambiarValor, cambiarNotificacion, guardar } =
+    useCapturaDeResultados(idOrden)
   const ubicacion = useLocation()
   const estadoDeNavegacion = ubicacion.state as { aviso?: string } | null
 
@@ -82,8 +84,11 @@ function CapturaDeOrden({ idOrden }: { idOrden: number }) {
     const texto = valores[clave] ?? ''
     const bandera = banderaEnVivo(texto, parametro.rule)
 
+    const notificacion = notificaciones[clave] ?? NOTIFICACION_INICIAL
+
     filas.push(
-      <tr key={clave}>
+      <Fragment key={clave}>
+      <tr>
         <td>{parametro.parameterName}</td>
         <td>
           <input
@@ -102,7 +107,52 @@ function CapturaDeOrden({ idOrden }: { idOrden: number }) {
         <td>{parametro.rangeText ?? 'Sin rango'}</td>
         <td>{bandera !== null && <ResultFlag value={bandera} />}</td>
         <td className="mono muted">{parametro.previous ?? '—'}</td>
-      </tr>,
+      </tr>
+      {esBanderaCritica(bandera) && (
+        <tr className="critical-notification">
+          <td colSpan={6}>
+            <fieldset disabled={guardando}>
+              <legend>Notificación del valor crítico (obligatoria para guardar)</legend>
+              <label>
+                Notificado a
+                <select
+                  aria-label={`Notificado a (${parametro.parameterName})`}
+                  value={notificacion.recipient}
+                  onChange={(evento) => cambiarNotificacion(clave, { recipient: evento.target.value as DestinatarioCritico })}
+                >
+                  <option value="doctor">Médico</option>
+                  <option value="patient">Paciente</option>
+                </select>
+              </label>
+              <label>
+                Nombre
+                <input
+                  aria-label={`Nombre de quien se notificó (${parametro.parameterName})`}
+                  autoComplete="off"
+                  maxLength={150}
+                  value={notificacion.recipientName}
+                  onChange={(evento) => cambiarNotificacion(clave, { recipientName: evento.target.value })}
+                />
+              </label>
+              <label>
+                Medio
+                <select
+                  aria-label={`Medio de contacto (${parametro.parameterName})`}
+                  value={notificacion.contactMethod}
+                  onChange={(evento) => cambiarNotificacion(clave, { contactMethod: evento.target.value as MedioDeContacto })}
+                >
+                  <option value="phone">Teléfono</option>
+                  <option value="email">Correo</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="in_person">En persona</option>
+                </select>
+              </label>
+              <small>Se registra con la fecha y hora en que guardas.</small>
+            </fieldset>
+          </td>
+        </tr>
+      )}
+      </Fragment>,
     )
   }
 

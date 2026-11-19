@@ -13,6 +13,7 @@ import type { CorteCajaRepository } from './corte-caja.repository';
 import {
   buildCsv,
   buildLiveSummary,
+  buildPostClose,
   buildSnapshot,
   defaultShiftFor,
   formatLocalDate,
@@ -122,16 +123,20 @@ export class CorteCajaService {
     return { branch, cashier };
   }
 
-  private async liveSummary(scope: Scope): Promise<LiveSummary> {
+  private liveOrders(scope: Scope) {
     const { start, end } = resolvePeriod(scope.date, scope.shift);
-    const orders = await this.repository.findLiveOrders(
+    return this.repository.findLiveOrders(
       scope.tenantId,
       scope.branchId,
       scope.cashierId === 0 ? null : scope.cashierId,
       start,
       end,
     );
-    return buildLiveSummary(orders, start, end);
+  }
+
+  private async liveSummary(scope: Scope): Promise<LiveSummary> {
+    const { start, end } = resolvePeriod(scope.date, scope.shift);
+    return buildLiveSummary(await this.liveOrders(scope), start, end);
   }
 
   async getSummary(scope: Scope) {
@@ -164,6 +169,7 @@ export class CorteCajaService {
 
       if (existingCut && existingCut.status === 'closed') {
         const snapshot = parseSnapshot(existingCut.snapshotJson);
+        const postClose = buildPostClose(await this.liveOrders(scope), start, end);
         return {
           scope: scopeInfo,
           status: 'closed' as const,
@@ -184,6 +190,7 @@ export class CorteCajaService {
             expectedCash: existingCut.expectedCash,
           },
           movements: snapshot ? snapshot.movements : [],
+          postClose,
         };
       }
 
@@ -199,6 +206,7 @@ export class CorteCajaService {
         observation: '' as string | null,
         summary: live.summary,
         movements: live.movements,
+        postClose: null,
       };
     } catch (error) {
       return this.failure(error);
@@ -217,7 +225,8 @@ export class CorteCajaService {
       const existing = await this.repository.findCut(scope.tenantId, scope.branchId, realCashierId, cutDate, scope.shift);
       if (existing && existing.status === 'closed') throw new CutAlreadyClosedError();
 
-      const live = await this.liveSummary(scope);
+      const liveOrders = await this.liveOrders(scope);
+      const live = buildLiveSummary(liveOrders, start, end);
       const countedCash = round2(Number(payload.countedCash));
       const difference = round2(countedCash - live.summary.expectedCash);
       const observation = (payload.observation ?? '').trim();
@@ -227,6 +236,12 @@ export class CorteCajaService {
       const snapshot = buildSnapshot(scope, branch.name, cashier.fullName, live, now);
       const orderIds: number[] = [];
       for (const movement of live.movements) orderIds.push(movement.id);
+      const paymentIds: number[] = [];
+      for (const order of liveOrders) {
+        for (const payment of order.payments) {
+          if (payment.id !== undefined) paymentIds.push(payment.id);
+        }
+      }
 
       const saved = await this.repository.saveClosedCut({
         existingId: existing ? existing.id : null,
@@ -245,6 +260,7 @@ export class CorteCajaService {
         closedById: payload.closedById,
         closedAt: now,
         orderIds,
+        paymentIds,
       });
 
       return {

@@ -17,6 +17,7 @@ import {
   prepareValue,
 } from './worklist.rules';
 import type {
+  CriticalNotificationSave,
   OrderRecord,
   PendingParameter,
   ResultEntry,
@@ -103,6 +104,24 @@ function findPending(pending: PendingParameter[], entry: ResultEntry): PendingPa
   return null;
 }
 
+const RECIPIENTS: readonly string[] = ['doctor', 'patient'];
+const CONTACT_METHODS: readonly string[] = ['phone', 'email', 'whatsapp', 'in_person'];
+
+function readNotification(entry: ResultEntry, now: Date): CriticalNotificationSave | null {
+  const notification = entry.notification;
+  if (!notification) return null;
+  const name = typeof notification.recipientName === 'string' ? notification.recipientName.trim() : '';
+  if (!name || name.length > 150) return null;
+  if (!RECIPIENTS.includes(notification.recipient) || !CONTACT_METHODS.includes(notification.contactMethod)) return null;
+
+  let notifiedAt = now;
+  if (notification.notifiedAt !== undefined) {
+    notifiedAt = new Date(notification.notifiedAt);
+    if (Number.isNaN(notifiedAt.getTime())) return null;
+  }
+  return { recipient: notification.recipient, recipientName: name, contactMethod: notification.contactMethod, notifiedAt };
+}
+
 function isRepeated(entries: ResultEntry[], index: number): boolean {
   const current = entries[index];
   for (let before = 0; before < index; before++) {
@@ -151,6 +170,7 @@ export class WorklistService {
     orderId: number,
     entries: ResultEntry[],
     today: Date = new Date(),
+    userId: number | null = null,
   ): Promise<SavedResult[]> {
     if (entries.length === 0) {
       throw new EmptyCaptureError();
@@ -175,8 +195,12 @@ export class WorklistService {
       }
 
       const flag = interpretValue(prepared.value, parameter.rule);
+      let notification: CriticalNotificationSave | undefined;
       if (flag === 'HH' || flag === 'LL') {
-        throw new CriticalValueError(parameter.parameterName, flag);
+        // HU 6.2 CA5: un valor crítico solo se guarda con a quién, cuándo y por qué medio se notificó.
+        const read = readNotification(entry, today);
+        if (read === null) throw new CriticalValueError(parameter.parameterName, flag);
+        notification = read;
       }
 
       toSave.push({
@@ -184,11 +208,12 @@ export class WorklistService {
         parameterId: parameter.parameterId,
         value: prepared.value,
         flag,
+        notification,
         referenceSnapshot: JSON.stringify({ display: parameter.rangeText, unit: parameter.unit, rule: parameter.rule, reference: parameter.reference, processedAt: order.referenceContext?.processedAt?.toISOString() ?? today.toISOString(), condition: order.referenceContext?.condition ?? '', weeks: order.referenceContext?.weeks ?? null }),
       });
     }
 
-    await this.repository.saveResults(tenantId, toSave);
+    await this.repository.saveResults(tenantId, toSave, userId);
 
     const saved: SavedResult[] = [];
     for (const entry of toSave) {

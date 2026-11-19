@@ -31,7 +31,13 @@ export class WorklistController {
     @Param('orderId', new IdPositivoPipe(ID_ORDEN_INVALIDO)) orderId: number,
     @Body() dto: GuardarResultadosDto,
   ) {
-    const saved = await this.servicio.saveOrderResults(sesion.tenantId, orderId, dto.results);
+    const saved = await this.servicio.saveOrderResults(
+      sesion.tenantId,
+      orderId,
+      dto.results,
+      new Date(),
+      sesion.usuarioId ?? null,
+    );
     return { saved };
   }
 }

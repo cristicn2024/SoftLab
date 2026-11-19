@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { mensajeDeError } from '../../compartido/api'
-import { armarEntradas, siguienteOrden } from './captura'
+import { armarEntradas, NOTIFICACION_INICIAL, siguienteOrden } from './captura'
 import { RUTA_LISTA, rutaDeCaptura } from './rutas'
 import { guardarResultados, obtenerLista, obtenerOrden } from './servicio'
-import type { OrdenDeLista } from './tipos'
+import type { NotificacionCritica, OrdenDeLista } from './tipos'
 
 type Estado = {
   cargando: boolean
@@ -23,6 +23,7 @@ export function useCapturaDeResultados(idOrden: number) {
   const navigate = useNavigate()
   const [estado, setEstado] = useState<Estado>({ cargando: true, orden: null, error: '' })
   const [valores, setValores] = useState<Record<string, string>>({})
+  const [notificaciones, setNotificaciones] = useState<Record<string, NotificacionCritica>>({})
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [aviso, setAviso] = useState<Aviso | null>(null)
@@ -49,10 +50,16 @@ export function useCapturaDeResultados(idOrden: number) {
     const orden = await obtenerOrden(idOrden)
     setEstado({ cargando: false, orden, error: '' })
     setValores({})
+    setNotificaciones({})
   }
 
   function cambiarValor(clave: string, texto: string) {
     setValores({ ...valores, [clave]: texto })
+    if (mensaje !== '') setMensaje('')
+  }
+
+  function cambiarNotificacion(clave: string, cambio: Partial<NotificacionCritica>) {
+    setNotificaciones({ ...notificaciones, [clave]: { ...(notificaciones[clave] ?? NOTIFICACION_INICIAL), ...cambio } })
     if (mensaje !== '') setMensaje('')
   }
 
@@ -67,7 +74,7 @@ export function useCapturaDeResultados(idOrden: number) {
   async function guardar(irASiguiente: boolean) {
     if (estado.orden === null || guardando) return
 
-    const armado = armarEntradas(estado.orden.pending, valores)
+    const armado = armarEntradas(estado.orden.pending, valores, notificaciones)
     if (!armado.ok) {
       setMensaje(armado.mensaje)
       return
@@ -101,6 +108,7 @@ export function useCapturaDeResultados(idOrden: number) {
       }
       setEstado({ cargando: false, orden: ordenActualizada, error: '' })
       setValores({})
+      setNotificaciones({})
       setAviso({ id: Date.now(), texto: AVISO_GUARDADO })
     } catch (error) {
       setMensaje(mensajeDeError(error))
@@ -109,5 +117,17 @@ export function useCapturaDeResultados(idOrden: number) {
     }
   }
 
-  return { recargarContexto, estado, valores, guardando, mensaje, aviso, cambiarValor, guardar, volverALista }
+  return {
+    recargarContexto,
+    estado,
+    valores,
+    notificaciones,
+    guardando,
+    mensaje,
+    aviso,
+    cambiarValor,
+    cambiarNotificacion,
+    guardar,
+    volverALista,
+  }
 }

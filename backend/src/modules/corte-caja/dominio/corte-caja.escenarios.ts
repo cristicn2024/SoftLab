@@ -32,6 +32,8 @@ export interface FakeOrder {
   order: LiveOrder;
   paymentCreatedAt: Date;
   cashCutId: number | null;
+  /** Quién cobró; por omisión, el cajero de la orden (HU 5.4 CA2/CA3 atribuye por el pago). */
+  payerId?: number | null;
 }
 
 export interface FakeCut {
@@ -223,11 +225,21 @@ export class FakeRepository implements CorteCajaRepository {
     end: Date,
   ): Promise<LiveOrder[]> {
     this.check();
+    const inPeriod = function dentro(date: Date): boolean {
+      return date.getTime() >= start.getTime() && date.getTime() < end.getTime();
+    };
     const result: LiveOrder[] = [];
     for (const fake of this.orders) {
-      if (fake.tenantId !== tenantId || fake.branchId !== branchId || fake.cashierId !== cashierId) continue;
-      const time = fake.order.createdAt.getTime();
-      if (time >= start.getTime() && time < end.getTime()) result.push(fake.order);
+      if (fake.tenantId !== tenantId || fake.branchId !== branchId) continue;
+      const payer = fake.payerId === undefined ? fake.cashierId : fake.payerId;
+      const paidHere = fake.order.payments.length > 0 && payer === cashierId && inPeriod(fake.paymentCreatedAt);
+      const originatedHere = fake.cashierId === cashierId && inPeriod(fake.order.createdAt);
+      if (!originatedHere && !paidHere) continue;
+      const payments: LivePayment[] = [];
+      if (paidHere) {
+        for (const payment of fake.order.payments) payments.push({ ...payment, cashCutId: fake.cashCutId });
+      }
+      result.push({ ...fake.order, payments, originatedHere });
     }
     result.sort(function porFecha(a, b) {
       return a.createdAt.getTime() - b.createdAt.getTime();

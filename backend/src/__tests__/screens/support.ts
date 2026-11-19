@@ -40,6 +40,8 @@ export interface OrderInput {
   status?: OrderStatus;
   cashierId?: number | null;
   createdAt?: Date;
+  /** Momento del cobro; por omisión, ahora. El corte de caja atribuye los pagos por esta fecha. */
+  paidAt?: Date;
   totalAmount?: number;
   discountPercent?: number;
   discountAmount?: number;
@@ -98,6 +100,7 @@ export async function createScreenFixture(label: string) {
       status = 'pending',
       cashierId = cashier.id,
       createdAt,
+      paidAt,
       totalAmount = 0,
       discountPercent = 0,
       discountAmount = 0,
@@ -144,6 +147,7 @@ export async function createScreenFixture(label: string) {
                   reference: payment.reference ?? null,
                   cancelled: payment.cancelled ?? false,
                   createdBy: `Cajero ${label}`,
+                  ...(paidAt ? { createdAt: paidAt } : {}),
                 })),
               },
             }

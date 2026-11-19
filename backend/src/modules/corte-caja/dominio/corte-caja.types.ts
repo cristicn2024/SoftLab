@@ -52,8 +52,12 @@ export interface LastPayment {
 }
 
 export interface LivePayment {
+  /** Id del pago; se usa para ligar al corte solo los pagos que le pertenecen. */
+  id?: number;
   method: PaymentMethodValue;
   amount: number;
+  /** Corte al que ya quedó ligado el pago; nulo si el pago es posterior al cierre. */
+  cashCutId?: number | null;
   /** Pago anulado desde cobro: ya no es dinero recibido y no entra al corte. */
   cancelled?: boolean;
 }
@@ -67,7 +71,16 @@ export interface LiveOrder {
   discountAmount: number;
   patientFirstName: string;
   patientLastName: string;
+  /**
+   * Pagos del cajero y periodo del corte (HU 5.4 CA2/CA3): se atribuyen por la fecha y el cajero
+   * del pago, no por los de la orden.
+   */
   payments: LivePayment[];
+  /**
+   * Verdadero (o ausente) si la orden se creó en este periodo por este cajero. Una orden que solo
+   * entra porque se cobró aquí no suma a órdenes, descuentos ni cancelaciones, para no contarla dos veces.
+   */
+  originatedHere?: boolean;
 }
 
 export interface CashCutMovement {
@@ -91,6 +104,13 @@ export interface CashCutSummary {
   cancellationsCount: number;
   totalPaid: number;
   expectedCash: number;
+}
+
+export interface PostCloseSummary {
+  cashTotal: number;
+  cardTotal: number;
+  transferTotal: number;
+  totalPaid: number;
 }
 
 export interface LiveSummary {
@@ -151,6 +171,8 @@ export interface SaveCutInput {
   closedById: number | null;
   closedAt: Date;
   orderIds: number[];
+  /** Pagos del corte (periodo y cajero); solo esos se ligan al cerrar. */
+  paymentIds: number[];
 }
 
 export interface SavedCut {

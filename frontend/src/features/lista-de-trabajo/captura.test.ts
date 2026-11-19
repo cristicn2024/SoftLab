@@ -100,3 +100,29 @@ test('después de guardar abre la siguiente orden de la lista', () => {
   assert.equal(siguienteOrden(antes, [orden(1), orden(3)], 1), 3)
   assert.equal(siguienteOrden([orden(1)], [], 1), null)
 })
+
+test('QA-01: un valor crítico con a quién se notificó sí se arma y lleva la notificación', () => {
+  const pendientes = [parametro(1, true)]
+  const clave = claveDe(pendientes[0])
+  const notificaciones = { [clave]: { recipient: 'patient' as const, recipientName: '  Ana Pérez ', contactMethod: 'whatsapp' as const } }
+
+  const armado = armarEntradas(pendientes, { [clave]: '600' }, notificaciones)
+  assert.equal(armado.ok, true)
+  if (armado.ok) {
+    assert.equal(armado.entradas[0].value, '600')
+    assert.deepEqual(armado.entradas[0].notification, { recipient: 'patient', recipientName: 'Ana Pérez', contactMethod: 'whatsapp' })
+  }
+
+  const sinNombre = { [clave]: { recipient: 'doctor' as const, recipientName: '   ', contactMethod: 'phone' as const } }
+  assert.equal(armarEntradas(pendientes, { [clave]: '600' }, sinNombre).ok, false)
+})
+
+test('QA-01: un valor normal no manda notificación aunque exista una capturada', () => {
+  const pendientes = [parametro(1, true)]
+  const clave = claveDe(pendientes[0])
+  const notificaciones = { [clave]: { recipient: 'doctor' as const, recipientName: 'Dra. Ruiz', contactMethod: 'phone' as const } }
+
+  const armado = armarEntradas(pendientes, { [clave]: '90' }, notificaciones)
+  assert.equal(armado.ok, true)
+  if (armado.ok) assert.equal(armado.entradas[0].notification, undefined)
+})

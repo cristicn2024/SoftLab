@@ -58,7 +58,7 @@ export function order(id: number, gender: string, birthDate: Date): OrderRecord 
 }
 
 export class FakeRepository implements WorklistRepository {
-  readonly saves: { tenantId: number; entries: SaveEntry[] }[] = [];
+  readonly saves: { tenantId: number; entries: SaveEntry[]; userId: number | null }[] = [];
   private readonly byTenant = new Map<number, OrderRecord[]>();
 
   add(tenantId: number, record: OrderRecord) {
@@ -80,7 +80,7 @@ export class FakeRepository implements WorklistRepository {
     return null;
   }
 
-  async saveResults(tenantId: number, entries: SaveEntry[]): Promise<void> {
-    this.saves.push({ tenantId, entries });
+  async saveResults(tenantId: number, entries: SaveEntry[], userId: number | null = null): Promise<void> {
+    this.saves.push({ tenantId, entries, userId });
   }
 }

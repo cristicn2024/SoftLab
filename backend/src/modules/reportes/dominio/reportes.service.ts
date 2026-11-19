@@ -1,5 +1,11 @@
 import { ErrorDeDominio } from '../../../comun/errores';
-import { CancelledOrderError, InvalidChannelError, ReleaseOrderNotFoundError, ReportGenerationError } from './reportes.errors';
+import {
+  CancelledOrderError,
+  InvalidChannelError,
+  ReasonTooLongError,
+  ReleaseOrderNotFoundError,
+  ReportGenerationError,
+} from './reportes.errors';
 import type { PdfRenderer, ReleaseUnit, ReportesRepository } from './reportes.repository';
 import type {
   Actor,
@@ -105,7 +111,10 @@ export class ReportesService {
       if (order.status === 'cancelled') throw new CancelledOrderError();
 
       const balance = pendingBalance(order);
-      if (balance > 0 && (!actor.isAdmin || !reason || reason.length > MAX_REASON_LENGTH)) {
+      if (balance > 0 && actor.isAdmin && reason.length > MAX_REASON_LENGTH) {
+        throw new ReasonTooLongError(MAX_REASON_LENGTH);
+      }
+      if (balance > 0 && (!actor.isAdmin || !reason)) {
         await unit.log(actor.name, 'Entrega bloqueada', `Canal: ${channel} · Saldo: $${pesos(balance)}`);
         return {
           kind: 'blocked',

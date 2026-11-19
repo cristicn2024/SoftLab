@@ -109,8 +109,18 @@ export class CorteCajaPrismaRepository implements CorteCajaRepository {
     start: Date,
     end: Date,
   ): Promise<LiveOrder[]> {
+    const inPeriod = { gte: start, lt: end };
+    // HU 5.4 CA2/CA3: el corte reúne los pagos por la fecha y el cajero del PAGO. También entran las
+    // órdenes creadas en el periodo por este cajero aunque aún no tengan pagos (pendientes y cancelaciones).
     const orders = await this.prisma.order.findMany({
-      where: { tenantId, branchId, cashierId, createdAt: { gte: start, lt: end } },
+      where: {
+        tenantId,
+        branchId,
+        OR: [
+          { cashierId, createdAt: inPeriod },
+          { payments: { some: { branchId, cashierId, createdAt: inPeriod } } },
+        ],
+      },
       include: { patient: true, payments: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -119,8 +129,21 @@ export class CorteCajaPrismaRepository implements CorteCajaRepository {
     for (const order of orders) {
       const payments: LivePayment[] = [];
       for (const payment of order.payments) {
-        payments.push({ method: payment.method, amount: Number(payment.amount), cancelled: payment.cancelled });
+        const inScope =
+          payment.branchId === branchId &&
+          payment.cashierId === cashierId &&
+          payment.createdAt >= start &&
+          payment.createdAt < end;
+        if (!inScope) continue;
+        payments.push({
+          id: payment.id,
+          method: payment.method,
+          amount: Number(payment.amount),
+          cancelled: payment.cancelled,
+          cashCutId: payment.cashCutId,
+        });
       }
+      const originatedHere = order.cashierId === cashierId && order.createdAt >= start && order.createdAt < end;
       result.push({
         id: order.id,
         createdAt: order.createdAt,
@@ -131,6 +154,7 @@ export class CorteCajaPrismaRepository implements CorteCajaRepository {
         patientFirstName: order.patient.firstName,
         patientLastName: order.patient.lastName,
         payments,
+        originatedHere,
       });
     }
     return result;
@@ -204,12 +228,12 @@ export class CorteCajaPrismaRepository implements CorteCajaRepository {
         });
       }
 
-      if (input.orderIds.length > 0) {
+      if (input.paymentIds.length > 0) {
         await tx.payment.updateMany({
           where: {
             tenantId: input.tenantId,
             branchId: input.branchId,
-            orderId: { in: input.orderIds },
+            id: { in: input.paymentIds },
             cashCutId: null,
           },
           data: { cashCutId: saved.id },

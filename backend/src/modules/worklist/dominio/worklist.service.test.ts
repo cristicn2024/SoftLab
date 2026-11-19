@@ -125,3 +125,58 @@ test('rechaza captura vacía, texto en estudio numérico, parámetros ajenos y r
   );
   assert.equal(repository.saves.length, 0);
 });
+
+test('QA-01: un valor crítico con a quién se notificó se guarda con su notificación', async () => {
+  const { service, repository } = setup();
+  const saved = await service.saveOrderResults(
+    1,
+    1,
+    [
+      {
+        orderItemId: 1000,
+        parameterId: 7,
+        value: '600',
+        notification: { recipient: 'doctor', recipientName: ' Dra. Pérez ', contactMethod: 'phone', notifiedAt: '2026-11-03T09:30:00.000Z' },
+      },
+    ],
+    TODAY,
+    9,
+  );
+  assert.equal(saved[0].flag, 'HH');
+  assert.equal(repository.saves.length, 1);
+  assert.equal(repository.saves[0].userId, 9);
+  const notification = repository.saves[0].entries[0].notification;
+  assert.equal(notification?.recipientName, 'Dra. Pérez');
+  assert.equal(notification?.recipient, 'doctor');
+  assert.equal(notification?.contactMethod, 'phone');
+  assert.equal(notification?.notifiedAt.toISOString(), '2026-11-03T09:30:00.000Z');
+});
+
+test('QA-01: sin nombre, destinatario o medio válidos el crítico sigue sin guardarse', async () => {
+  const { service, repository } = setup();
+  const base = { orderItemId: 1000, parameterId: 7, value: '600' };
+  const invalidas = [
+    { recipient: 'doctor', recipientName: '   ', contactMethod: 'phone' },
+    { recipient: 'vecino', recipientName: 'Ana', contactMethod: 'phone' },
+    { recipient: 'patient', recipientName: 'Ana', contactMethod: 'paloma' },
+    { recipient: 'patient', recipientName: 'Ana', contactMethod: 'email', notifiedAt: 'ayer' },
+  ];
+  for (const notification of invalidas) {
+    await assert.rejects(
+      service.saveOrderResults(1, 1, [{ ...base, notification: notification as never }], TODAY),
+      CriticalValueError,
+    );
+  }
+  assert.equal(repository.saves.length, 0);
+});
+
+test('QA-01: un valor normal ignora la notificación y no la guarda', async () => {
+  const { service, repository } = setup();
+  await service.saveOrderResults(
+    1,
+    1,
+    [{ orderItemId: 1000, parameterId: 7, value: '90', notification: { recipient: 'patient', recipientName: 'Ana', contactMethod: 'email' } }],
+    TODAY,
+  );
+  assert.equal(repository.saves[0].entries[0].notification, undefined);
+});

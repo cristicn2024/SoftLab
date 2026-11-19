@@ -178,20 +178,29 @@ export class WorklistPrismaRepository implements WorklistRepository {
     return record;
   }
 
-  async saveResults(tenantId: number, entries: SaveEntry[]): Promise<void> {
+  async saveResults(tenantId: number, entries: SaveEntry[], userId: number | null = null): Promise<void> {
     try {
       await this.prisma.$transaction(async tx => {
         const items = await tx.orderItem.findMany({where:{id:{in:entries.map(e=>e.orderItemId)},order:{tenantId}},select:{id:true,orderId:true}});
+        const branchByOrder = new Map<number, number>();
         for (const orderId of [...new Set(items.map(i=>i.orderId))].sort((a,b)=>a-b)) {
           await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId} AND tenant_id = ${tenantId} FOR UPDATE`;
           const order = await tx.order.findFirst({where:{id:orderId,tenantId}});
+          if(order) branchByOrder.set(orderId, order.branchId);
           if(!order || order.resultsDeliveredAt || await tx.orderReport.count({where:{orderId,tenantId}})) throw new ConflictException('No se pueden cambiar resultados de un informe emitido');
           const entry=entries.find(e=>items.some(i=>i.id===e.orderItemId&&i.orderId===orderId))!;
           const snapshot=entry.referenceSnapshot ? JSON.parse(entry.referenceSnapshot) : null;
           if(snapshot && order.processedAt && (order.processedAt.toISOString()!==snapshot.processedAt || (order.referenceCondition??'')!==snapshot.condition || order.referenceWeeks!==snapshot.weeks)) throw new ConflictException('El contexto cambió. Recarga la orden antes de guardar');
           if(snapshot && !order.processedAt) await tx.order.update({where:{id:orderId},data:{processedAt:new Date(snapshot.processedAt),referenceCondition:snapshot.condition,referenceWeeks:snapshot.weeks}});
         }
-        for (const entry of entries) await tx.testResult.create({data:{tenantId,orderItemId:entry.orderItemId,parameterId:entry.parameterId,resultValue:entry.value,flag:entry.flag,referenceSnapshot:entry.referenceSnapshot,isAlert:entry.flag!=='Normal'&&entry.flag!=='—'}});
+        for (const entry of entries) {
+          const result = await tx.testResult.create({data:{tenantId,orderItemId:entry.orderItemId,parameterId:entry.parameterId,resultValue:entry.value,flag:entry.flag,referenceSnapshot:entry.referenceSnapshot,isAlert:entry.flag!=='Normal'&&entry.flag!=='—'}});
+          if (entry.notification) {
+            // HU 6.2 CA5: queda registrado a quién, cuándo y por qué medio se avisó del valor crítico.
+            const orderId = items.find(i=>i.id===entry.orderItemId)!.orderId;
+            await tx.criticalNotification.create({data:{tenantId,resultId:result.id,userId,branchId:branchByOrder.get(orderId)!,recipient:entry.notification.recipient,recipientName:entry.notification.recipientName,contactMethod:entry.notification.contactMethod,notifiedAt:entry.notification.notifiedAt}});
+          }
+        }
       });
     } catch (error) {
       if (isUniqueViolation(error)) throw new ResultAlreadyCapturedError();

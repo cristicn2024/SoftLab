@@ -111,13 +111,32 @@ export type Worklist = {
   orders: WorklistOrder[];
 };
 
+export const CRITICAL_RECIPIENTS = ['doctor', 'patient'] as const;
+export const CRITICAL_CONTACT_METHODS = ['phone', 'email', 'whatsapp', 'in_person'] as const;
+
+/** HU 6.2 CA5: a quién, cuándo y por qué medio se avisó de un valor crítico. */
+export type CriticalNotificationInput = {
+  recipient: (typeof CRITICAL_RECIPIENTS)[number];
+  recipientName: string;
+  contactMethod: (typeof CRITICAL_CONTACT_METHODS)[number];
+  /** ISO 8601; si falta se toma el momento de guardar. */
+  notifiedAt?: string;
+};
+
 export type ResultEntry = {
   orderItemId: number;
   parameterId: number;
   value: string;
+  notification?: CriticalNotificationInput;
 };
 
-export type SaveEntry = ResultEntry & { flag: Flag; referenceSnapshot?: string };
+export type CriticalNotificationSave = Omit<CriticalNotificationInput, 'notifiedAt'> & { notifiedAt: Date };
+
+export type SaveEntry = Omit<ResultEntry, 'notification'> & {
+  flag: Flag;
+  referenceSnapshot?: string;
+  notification?: CriticalNotificationSave;
+};
 
 export type SavedResult = {
   orderItemId: number;

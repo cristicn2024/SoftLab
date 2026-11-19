@@ -23,3 +23,9 @@ export class ReportGenerationError extends ErrorDeDominio {
     super('Error al generar informe PDF');
   }
 }
+
+export class ReasonTooLongError extends DatoInvalidoError {
+  constructor(maxLength: number) {
+    super(`El motivo de la excepción no puede exceder ${maxLength} caracteres`);
+  }
+}

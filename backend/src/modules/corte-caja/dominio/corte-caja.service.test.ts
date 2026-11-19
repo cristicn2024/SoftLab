@@ -251,3 +251,51 @@ test('un fallo inesperado del repositorio se vuelve error interno genérico', as
     console.error = original;
   }
 });
+
+test('QA-02: el corte toma los pagos por fecha y cajero del pago, no de la orden', async () => {
+  const { repository, service } = setup();
+  const ayer = new Date(2026, 0, 14, 9);
+  const vieja = repository.addOrder(1, 10, 6, ayer, { totalAmount: 110, discountAmount: 5, payments: [{ method: 'cash', amount: 110 }] });
+  vieja.payerId = 5;
+  vieja.paymentCreatedAt = at(9);
+
+  const delCajero = await service.getSummary(SCOPE);
+  assert.equal(delCajero.summary.cashTotal, 410);
+  assert.equal(delCajero.summary.expectedCash, 410);
+  assert.equal(delCajero.movements.length, 4);
+  assert.equal(delCajero.summary.ordersCount, 3);
+  assert.equal(delCajero.summary.discountsTotal, 10);
+
+  const delOtro = await service.getSummary({ ...SCOPE, cashierId: 6 });
+  assert.equal(delOtro.summary.cashTotal, 777);
+  assert.equal(delOtro.summary.ordersCount, 1);
+});
+
+test('QA-02: una orden del turno cobrada por otro cajero no suma efectivo al corte', async () => {
+  const { repository, service } = setup();
+  const ajena = repository.addOrder(1, 10, 5, at(11), { totalAmount: 90, payments: [{ method: 'cash', amount: 90 }] });
+  ajena.payerId = 6;
+
+  const res = await service.getSummary(SCOPE);
+  assert.equal(res.summary.cashTotal, 300);
+  assert.equal(res.summary.ordersCount, 4);
+});
+
+test('QA-06: un pago posterior al cierre aparece como movimiento nuevo y el corte cerrado no cambia', async () => {
+  const { repository, service } = setup();
+  const cierre = await service.closeCut(SCOPE, { countedCash: 300, closedById: 5 }, NOW);
+  assert.equal(cierre.difference, 0);
+
+  const antes = await service.getSummary(SCOPE);
+  assert.equal(antes.status, 'closed');
+  assert.equal(antes.postClose?.movements.length, 0);
+
+  repository.addOrder(1, 10, 5, at(11), { totalAmount: 90, payments: [{ method: 'cash', amount: 90 }] });
+  const despues = await service.getSummary(SCOPE);
+  assert.equal(despues.status, 'closed');
+  assert.equal(despues.summary.cashTotal, 300);
+  assert.equal(despues.summary.expectedCash, 300);
+  assert.equal(despues.postClose?.movements.length, 1);
+  assert.equal(despues.postClose?.summary.cashTotal, 90);
+  assert.equal(despues.postClose?.summary.totalPaid, 90);
+});

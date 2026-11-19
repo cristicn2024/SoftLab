@@ -7,6 +7,7 @@ import type {
   LiveOrder,
   LivePayment,
   LiveSummary,
+  PostCloseSummary,
   MovementMethod,
   PaymentMethodValue,
   Scope,
@@ -113,12 +114,21 @@ export function methodForOrder(status: string, payments: LivePayment[]): { metho
   return { method: 'mixed', label: 'Mixto' };
 }
 
+function originatedHere(order: LiveOrder): boolean {
+  return order.originatedHere !== false;
+}
+
 export function buildLiveSummary(orders: LiveOrder[], start: Date, end: Date): LiveSummary {
+  let ordersCount = 0;
+  for (const order of orders) {
+    if (originatedHere(order)) ordersCount += 1;
+  }
+
   const summary: CashCutSummary = {
     cashTotal: 0,
     cardTotal: 0,
     transferTotal: 0,
-    ordersCount: orders.length,
+    ordersCount,
     discountsTotal: 0,
     cancellationsCount: 0,
     totalPaid: 0,
@@ -137,8 +147,10 @@ export function buildLiveSummary(orders: LiveOrder[], start: Date, end: Date): L
       summary.totalPaid += payment.amount;
     }
 
-    summary.discountsTotal += order.discountAmount;
-    if (order.status === 'cancelled') summary.cancellationsCount += 1;
+    if (originatedHere(order)) {
+      summary.discountsTotal += order.discountAmount;
+      if (order.status === 'cancelled') summary.cancellationsCount += 1;
+    }
 
     const { method, label } = methodForOrder(order.status, received);
     movements.push({
@@ -162,6 +174,35 @@ export function buildLiveSummary(orders: LiveOrder[], start: Date, end: Date): L
   summary.expectedCash = summary.cashTotal;
 
   return { summary, movements, period: { start, end } };
+}
+
+/**
+ * HU 5.4 CA6: pagos registrados después de cerrar el corte. El corte cerrado no cambia; estos pagos
+ * se muestran aparte como movimientos nuevos (los que aún no están ligados a ningún corte).
+ */
+export function buildPostClose(
+  orders: LiveOrder[],
+  start: Date,
+  end: Date,
+): { summary: PostCloseSummary; movements: CashCutMovement[] } {
+  const late: LiveOrder[] = [];
+  for (const order of orders) {
+    const payments: LivePayment[] = [];
+    for (const payment of order.payments) {
+      if (payment.cashCutId === null || payment.cashCutId === undefined) payments.push(payment);
+    }
+    if (activePayments(payments).length > 0) late.push({ ...order, payments, originatedHere: false });
+  }
+  const { summary, movements } = buildLiveSummary(late, start, end);
+  return {
+    summary: {
+      cashTotal: summary.cashTotal,
+      cardTotal: summary.cardTotal,
+      transferTotal: summary.transferTotal,
+      totalPaid: summary.totalPaid,
+    },
+    movements,
+  };
 }
 
 export function buildSnapshot(

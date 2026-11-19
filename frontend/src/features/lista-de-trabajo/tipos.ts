@@ -42,8 +42,19 @@ export type ListaDeTrabajo = {
   orders: OrdenDeLista[]
 }
 
+export type DestinatarioCritico = 'doctor' | 'patient'
+export type MedioDeContacto = 'phone' | 'email' | 'whatsapp' | 'in_person'
+
+/** HU 6.2 CA5: a quién y por qué medio se avisó de un valor crítico. */
+export type NotificacionCritica = {
+  recipient: DestinatarioCritico
+  recipientName: string
+  contactMethod: MedioDeContacto
+}
+
 export type EntradaResultado = {
   orderItemId: number
   parameterId: number
   value: string
+  notification?: NotificacionCritica
 }

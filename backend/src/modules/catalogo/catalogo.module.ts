@@ -35,7 +35,6 @@ export class CatalogoController {
   }
 
   @Put(':kind/:id')
-  @Roles('admin')
   editar(@UsuarioActual() sesion: Sesion, @Param('kind') kind: string, @Param('id') rawId: string, @Body() body: Record<string, unknown>) {
     const id = Number(rawId);
     if (!Number.isSafeInteger(id) || id <= 0) throw new BadRequestException('ID inválido');

@@ -4,6 +4,7 @@ import type { CorteCajaRepository } from './dominio/corte-caja.repository';
 import { CorteCajaService } from './dominio/corte-caja.service';
 import { CorteCajaPrismaRepository } from './infra/corte-caja-prisma.repository';
 import { CORTE_CAJA_REPOSITORY } from './corte-caja.tokens';
+import { PrismaModule } from '../../prisma/prisma.module';
 
 function crearServicio(repositorio: CorteCajaRepository) {
   return new CorteCajaService(repositorio);
@@ -13,6 +14,7 @@ function crearServicio(repositorio: CorteCajaRepository) {
  * @author Jesús Rodrigo Villegas Argüelles - 261186
  */
 @Module({
+  imports: [PrismaModule],
   controllers: [CorteCajaController],
   providers: [
     { provide: CORTE_CAJA_REPOSITORY, useClass: CorteCajaPrismaRepository },

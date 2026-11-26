@@ -5,6 +5,8 @@ import { configurarApp } from '../../configurar-app';
 import { FakeRepository } from './dominio/corte-caja.escenarios';
 import { CorteCajaModule } from './corte-caja.module';
 import { CORTE_CAJA_REPOSITORY } from './corte-caja.tokens';
+import { BranchAccessService } from '../../auth/branch-access.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 const TENANT = { 'x-tenant-id': '1' };
 const QUERY = 'branchId=10&cashierId=5&shift=matutino&date=2026-01-15';
@@ -34,6 +36,10 @@ describe('API de corte de caja', () => {
     const modulo = await Test.createTestingModule({ imports: [CorteCajaModule] })
       .overrideProvider(CORTE_CAJA_REPOSITORY)
       .useValue(repositorio)
+      .overrideProvider(PrismaService)
+      .useValue({})
+      .overrideProvider(BranchAccessService)
+      .useValue({ allowedBranchIds: async () => null, exigirAcceso: async () => {} })
       .compile();
     app = modulo.createNestApplication();
     configurarApp(app as never);

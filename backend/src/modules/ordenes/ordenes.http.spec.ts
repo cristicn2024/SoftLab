@@ -6,6 +6,7 @@ import { catalogProfile, catalogTest, FakeRepository } from './dominio/ordenes.e
 import { OrdenesModule } from './ordenes.module';
 import { ORDENES_REPOSITORY } from './ordenes.tokens';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BranchAccessService } from '../../auth/branch-access.service';
 
 const TENANT = { 'x-tenant-id': '1' };
 
@@ -33,6 +34,8 @@ describe('API de nueva orden', () => {
       .useValue(repositorio)
       .overrideProvider(PrismaService)
       .useValue(prisma)
+      .overrideProvider(BranchAccessService)
+      .useValue({ allowedBranchIds: async () => null, exigirAcceso: async () => {} })
       .compile();
     app = modulo.createNestApplication();
     configurarApp(app as never);

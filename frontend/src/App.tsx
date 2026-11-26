@@ -8,6 +8,7 @@ import { Layout } from './compartido/layout/Layout'
 import { CashCutPage } from './pages/CashCutPage'
 import { OrderCapturePage } from './pages/OrderCapturePage'
 import { ReportTemplatePage } from './pages/ReportTemplatePage'
+import { BranchAccessPage } from './pages/BranchAccessPage'
 
 const PaginaEjemplo = lazy(() => import('./features/ejemplo/PaginaEjemplo'))
 const PaginaCobro = lazy(() => import('./features/cobro/PaginaCobro'))
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="resultados/lista-de-trabajo" element={<PaginaListaDeTrabajo />} />
               <Route path="resultados/lista-de-trabajo/:idOrden" element={<PaginaCapturaDeResultados />} />
               <Route path="resultados/plantillas" element={<ReportTemplatePage />} />
+              <Route path="administracion/acceso-sucursales" element={<BranchAccessPage />} />
               <Route path="resultados/ejemplo" element={<PaginaEjemplo />} />
             </Route>
             <Route path="corte-caja" element={<Navigate to="/ordenes/corte-caja" replace />} />

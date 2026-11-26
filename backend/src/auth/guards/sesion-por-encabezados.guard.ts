@@ -28,6 +28,7 @@ export class SesionPorEncabezadosGuard implements CanActivate {
     req.user = {
       tenantId,
       nombre: leerEncabezado(req.headers['x-user-name']) || 'Usuario sin nombre',
+      email: leerEncabezado(req.headers['x-user-email']).toLowerCase() || undefined,
       rol: rolDesdeEncabezado(leerEncabezado(req.headers['x-user-role'])),
     };
     if (Number.isSafeInteger(usuarioId) && usuarioId > 0) req.user.usuarioId = usuarioId;

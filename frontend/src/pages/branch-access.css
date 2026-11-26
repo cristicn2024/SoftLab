@@ -1,0 +1,13 @@
+.ba-list { display: grid; gap: 14px; max-width: 940px; }
+.ba-card { background: #fbfaf6; border: 1px solid #d7d1c4; padding: 18px; }
+.ba-employee { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.ba-employee h2 { margin: 0 0 5px; font-size: 16px; }
+.ba-employee p { margin: 0; color: #68716f; }
+.ba-employee > span { color: #20563f; font-size: 12px; font-weight: 700; }
+.ba-branches { display: flex; flex-wrap: wrap; gap: 12px 22px; margin: 18px 0; border: 0; padding: 0; }
+.ba-branches legend { margin-bottom: 10px; font-weight: 700; }
+.ba-branches label { display: flex; align-items: center; gap: 7px; }
+.ba-save { border: 0; background: #20563f; color: white; padding: 9px 14px; cursor: pointer; }
+.ba-save:disabled { opacity: .55; cursor: default; }
+.ba-message { color: #20563f; }
+.ba-error { color: #c62820; }

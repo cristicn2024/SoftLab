@@ -5,6 +5,8 @@ import { configurarApp } from '../../configurar-app';
 import { FakeRepository, order } from './dominio/cobro.escenarios';
 import { CobroModule } from './cobro.module';
 import { COBRO_REPOSITORY } from './cobro.tokens';
+import { BranchAccessService } from '../../auth/branch-access.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 const ADMIN = { 'x-tenant-id': '1', 'x-user-name': 'Administradora QA', 'x-user-role': 'admin' };
 const RECEPCION = { 'x-tenant-id': '1', 'x-user-name': 'Recepcionista QA', 'x-user-role': 'receptionist' };
@@ -24,6 +26,10 @@ describe('API de cobro', () => {
     const modulo = await Test.createTestingModule({ imports: [CobroModule] })
       .overrideProvider(COBRO_REPOSITORY)
       .useValue(repositorio)
+      .overrideProvider(PrismaService)
+      .useValue({})
+      .overrideProvider(BranchAccessService)
+      .useValue({ allowedBranchIds: async () => null, exigirAcceso: async () => {}, exigirAccesoOrden: async () => {}, exigirAccesoPago: async () => {} })
       .compile();
     app = modulo.createNestApplication();
     configurarApp(app as never);

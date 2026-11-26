@@ -8,6 +8,7 @@ import { RegistrarMedicoDto } from './dto/registrar-medico.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { consolidarPreanalitica, esIncompatible } from './dominio/preanalitica';
 import type { EstudioParaEnvio } from '../externos/dominio/externos.types';
+import { BranchAccessService } from '../../auth/branch-access.service';
 
 function estudiosParaEnvio(estudios: { id: number; externalLabId: number | null; turnaroundDays: number | null; outsourcingCost: unknown }[]): EstudioParaEnvio[] {
   const lista: EstudioParaEnvio[] = [];
@@ -23,11 +24,12 @@ function estudiosParaEnvio(estudios: { id: number; externalLabId: number | null;
 @ApiTags('ordenes')
 @Controller()
 export class OrdenesController {
-  constructor(private readonly servicio: OrdenesService, private readonly prisma: PrismaService) {}
+  constructor(private readonly servicio: OrdenesService, private readonly prisma: PrismaService, private readonly branchAccess: BranchAccessService) {}
 
   @Get('branches')
-  sucursales(@UsuarioActual() sesion: Sesion) {
-    return this.prisma.branch.findMany({ where: { tenantId: sesion.tenantId }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
+  async sucursales(@UsuarioActual() sesion: Sesion) {
+    const allowed = await this.branchAccess.allowedBranchIds(sesion);
+    return this.prisma.branch.findMany({ where: { tenantId: sesion.tenantId, ...(allowed === null ? {} : { id: { in: allowed } }) }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
   }
 
   @Get('patients')
@@ -51,8 +53,9 @@ export class OrdenesController {
   async indicacionesGuardadas(@UsuarioActual() sesion: Sesion, @Param('orderId') rawId: string) {
     const orderId = Number(rawId);
     if (!Number.isSafeInteger(orderId) || orderId <= 0) throw new BadRequestException('ID de orden inválido');
-    const order = await this.prisma.order.findFirst({ where: { id: orderId, tenantId: sesion.tenantId }, select: { preAnalyticalSnapshot: true } });
+    const order = await this.prisma.order.findFirst({ where: { id: orderId, tenantId: sesion.tenantId }, select: { preAnalyticalSnapshot: true, branchId: true } });
     if (!order) throw new NotFoundException('Orden no encontrada');
+    await this.branchAccess.exigirAcceso(sesion, order.branchId);
     return order.preAnalyticalSnapshot ?? { estudios: [], muestras: [], ayunos: [], preparacion: [], medicamentos: [], adicionales: [], conflictos: [], legacy: true };
   }
 
@@ -91,6 +94,7 @@ export class OrdenesController {
     }, new Date());
     const branchId = Number(dto.branchId);
     if (!Number.isSafeInteger(branchId) || branchId <= 0 || !await this.prisma.branch.findFirst({ where: { id: branchId, tenantId: sesion.tenantId }, select: { id: true } })) throw new BadRequestException('La sucursal no pertenece a este laboratorio');
+    await this.branchAccess.exigirAcceso(sesion, branchId);
     if (dto.doctorId != null && dto.doctorId !== '') {
       const doctorId = Number(dto.doctorId);
       if (!Number.isSafeInteger(doctorId) || !await this.prisma.doctor.findFirst({ where: { id: doctorId, tenantId: sesion.tenantId }, select: { id: true } })) throw new BadRequestException('El médico no pertenece a este laboratorio');

@@ -107,6 +107,7 @@ model Branch {
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   users           User[]
+  userBranchAccess UserBranchAccess[]
   orders          Order[]
   reportTemplates ReportTemplate[]
   cashCuts        CashCut[]
@@ -128,6 +129,7 @@ model User {
 
   tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch          Branch?      @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  branchAccess    UserBranchAccess[]
   validatedResults TestResult[]
   cashierOrders   Order[]      @relation("OrderCashier")
   cashierCuts     CashCut[]    @relation("CashCutCashier")
@@ -141,6 +143,19 @@ model User {
   @@index([branchId], map: "users_branch_id_fkey")
   @@index([tenantId], map: "users_tenant_id_fkey")
   @@map("users")
+}
+
+model UserBranchAccess {
+  userId    Int      @map("user_id")
+  branchId  Int      @map("branch_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+  @@index([branchId])
+  @@map("user_branch_access")
 }
 
 model Patient {

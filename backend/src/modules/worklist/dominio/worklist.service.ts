@@ -135,8 +135,8 @@ function isRepeated(entries: ResultEntry[], index: number): boolean {
 export class WorklistService {
   constructor(private readonly repository: WorklistRepository) {}
 
-  async getWorklist(tenantId: number, today: Date = new Date()): Promise<Worklist> {
-    const records = await this.repository.findReadyOrders(tenantId);
+  async getWorklist(tenantId: number, today: Date = new Date(), branchIds?: number[] | null): Promise<Worklist> {
+    const records = await this.repository.findReadyOrders(tenantId, branchIds);
     const worklist: Worklist = { totalPending: 0, withoutRange: 0, orders: [] };
 
     for (const record of records) {
@@ -157,8 +157,8 @@ export class WorklistService {
     return worklist;
   }
 
-  async getOrder(tenantId: number, orderId: number, today: Date = new Date()): Promise<WorklistOrder> {
-    const record = await this.repository.findReadyOrder(tenantId, orderId);
+  async getOrder(tenantId: number, orderId: number, today: Date = new Date(), branchIds?: number[] | null): Promise<WorklistOrder> {
+    const record = await this.repository.findReadyOrder(tenantId, orderId, branchIds);
     if (record === null) {
       throw new OrderNotFoundError(orderId);
     }
@@ -171,12 +171,13 @@ export class WorklistService {
     entries: ResultEntry[],
     today: Date = new Date(),
     userId: number | null = null,
+    branchIds?: number[] | null,
   ): Promise<SavedResult[]> {
     if (entries.length === 0) {
       throw new EmptyCaptureError();
     }
 
-    const order = await this.getOrder(tenantId, orderId, today);
+    const order = await this.getOrder(tenantId, orderId, today, branchIds);
     const toSave: SaveEntry[] = [];
 
     for (let index = 0; index < entries.length; index++) {

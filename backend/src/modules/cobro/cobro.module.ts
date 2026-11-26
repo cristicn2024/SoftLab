@@ -4,12 +4,14 @@ import type { CobroRepository } from './dominio/cobro.repository';
 import { CobroPrismaRepository } from './infra/cobro-prisma.repository';
 import { CobroController } from './cobro.controller';
 import { COBRO_REPOSITORY } from './cobro.tokens';
+import { PrismaModule } from '../../prisma/prisma.module';
 
 function crearServicio(repositorio: CobroRepository) {
   return new CobroService(repositorio);
 }
 
 @Module({
+  imports: [PrismaModule],
   controllers: [CobroController],
   providers: [
     { provide: COBRO_REPOSITORY, useClass: CobroPrismaRepository },

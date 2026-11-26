@@ -5,6 +5,8 @@ import { configurarApp } from '../../configurar-app';
 import { FakeRepository, order } from './dominio/worklist.escenarios';
 import { WorklistModule } from './worklist.module';
 import { WORKLIST_REPOSITORY } from './worklist.tokens';
+import { BranchAccessService } from '../../auth/branch-access.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 describe('API de la lista de trabajo', () => {
   let app: INestApplication;
@@ -19,6 +21,10 @@ describe('API de la lista de trabajo', () => {
     const modulo = await Test.createTestingModule({ imports: [WorklistModule] })
       .overrideProvider(WORKLIST_REPOSITORY)
       .useValue(repositorio)
+      .overrideProvider(PrismaService)
+      .useValue({})
+      .overrideProvider(BranchAccessService)
+      .useValue({ allowedBranchIds: async () => null })
       .compile();
     app = modulo.createNestApplication();
     configurarApp(app as never);

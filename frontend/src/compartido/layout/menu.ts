@@ -43,7 +43,9 @@ export const MENU: ElementoMenu[] = [
   },
   {
     etiqueta: 'Administración',
-    subelementos: []
+    subelementos: [
+      { etiqueta: 'Acceso multisucursal', ruta: '/administracion/acceso-sucursales' }
+    ]
   },
   {
     etiqueta: 'Reportes',

@@ -10,9 +10,10 @@ import { OrdenesModule } from './modules/ordenes/ordenes.module';
 import { ReportesModule } from './modules/reportes/reportes.module';
 import { WorklistModule } from './modules/worklist/worklist.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
-  imports: [ReferenciasModule, CatalogoModule, ExternosModule, PrismaModule, HealthModule, WorklistModule, CobroModule, PlantillasModule, ReportesModule, OrdenesModule, CorteCajaModule],
+  imports: [ReferenciasModule, CatalogoModule, ExternosModule, PrismaModule, AdminModule, HealthModule, WorklistModule, CobroModule, PlantillasModule, ReportesModule, OrdenesModule, CorteCajaModule],
 })
 export class AppModule {}
 

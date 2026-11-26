@@ -5,5 +5,8 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'x-tenant-id': import.meta.env.VITE_TENANT_ID ?? '1',
+    'x-user-name': 'Laura Mendez',
+    'x-user-email': 'laura.mendez@santalucia.demo',
+    'x-user-role': 'Administradora',
   },
 });

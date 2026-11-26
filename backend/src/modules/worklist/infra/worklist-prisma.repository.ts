@@ -134,9 +134,9 @@ function isUniqueViolation(error: unknown): boolean {
 export class WorklistPrismaRepository implements WorklistRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findReadyOrders(tenantId: number): Promise<OrderRecord[]> {
+  async findReadyOrders(tenantId: number, branchIds?: number[] | null): Promise<OrderRecord[]> {
     const rows = await this.prisma.order.findMany({
-      where: { tenantId, samples: { some: { status: { in: READY_SAMPLE_STATUSES } } } },
+      where: { tenantId, ...(branchIds === null || branchIds === undefined ? {} : { branchId: { in: branchIds } }), samples: { some: { status: { in: READY_SAMPLE_STATUSES } } } },
       orderBy: { createdAt: 'asc' },
       include: ORDER_INCLUDE,
     });
@@ -148,9 +148,9 @@ export class WorklistPrismaRepository implements WorklistRepository {
     return records;
   }
 
-  async findReadyOrder(tenantId: number, orderId: number): Promise<OrderRecord | null> {
+  async findReadyOrder(tenantId: number, orderId: number, branchIds?: number[] | null): Promise<OrderRecord | null> {
     const row = await this.prisma.order.findFirst({
-      where: { id: orderId, tenantId, samples: { some: { status: { in: READY_SAMPLE_STATUSES } } } },
+      where: { id: orderId, tenantId, ...(branchIds === null || branchIds === undefined ? {} : { branchId: { in: branchIds } }), samples: { some: { status: { in: READY_SAMPLE_STATUSES } } } },
       include: ORDER_INCLUDE,
     });
 

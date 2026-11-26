@@ -314,6 +314,9 @@ export async function sembrarDemo(prisma: PrismaClient): Promise<ResumenDemo> {
           },
         });
         usuarios[def.clave] = { id: usuario.id, nombre: def.nombre };
+        await tx.userBranchAccess.create({
+          data: { userId: usuario.id, branchId: sucursales[def.sucursal] },
+        });
       }
 
       const medicos: Array<{ doctorId: number; practitionerId: number; nombre: string }> = [];

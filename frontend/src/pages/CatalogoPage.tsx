@@ -83,7 +83,7 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
     <table style={{ width: '100%', marginTop: 24, textAlign: 'left' }}><thead><tr><th>Clave</th><th>Nombre</th><th>Detalle</th><th>Estatus</th><th>Acciones</th></tr></thead>
       <tbody>{catalog[kind].map(item => <tr key={item.id}><td>{item.code}</td><td>{item.name}</td>
         <td>{'tests' in item ? <>{item.tests.map(t => t.test.name).join(', ')}{item.tests.some(t => !t.test.status) && <p role="alert">Incluye estudios inactivos</p>}</> : <>{item.department} · {item.sampleType} · {item.genderRestriction === 'F' ? 'Femenino' : item.genderRestriction === 'M' ? 'Masculino' : 'Ambos'}</>}</td>
-        <td>{item.status ? 'Activo' : 'Inactivo'}</td><td>{'tests' in item ? (admin && <button onClick={() => edit(item)}>Editar / desactivar</button>) : <Link to={`/catalogo/estudios/${item.id}/editar`}>Editar / desactivar</Link>}</td></tr>)}</tbody>
+        <td>{item.status ? 'Activo' : 'Inactivo'}</td><td>{admin && ('tests' in item ? <button onClick={() => edit(item)}>Editar / desactivar</button> : <Link to={`/catalogo/estudios/${item.id}/editar`}>Editar / desactivar</Link>)}</td></tr>)}</tbody>
     </table>
     {catalog[kind].length === 0 && <p>Aún no hay registros.</p>}
     {showAudit && <section><h2>Bitácora de cambios</h2>{audits.map(a => <details key={a.id}><summary>{new Date(a.createdAt).toLocaleString()} · {a.userName}</summary><h3>Valor anterior</h3><pre>{JSON.stringify(a.before, null, 2)}</pre><h3>Valor nuevo</h3><pre>{JSON.stringify(a.after, null, 2)}</pre></details>)}</section>}

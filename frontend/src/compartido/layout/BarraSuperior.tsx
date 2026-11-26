@@ -1,7 +1,18 @@
+import { useState } from 'react'
+import { api, mensajeDeError } from '../api'
 import { useSesion } from '../sesionContext'
 
 export function BarraSuperior() {
-  const { sesion } = useSesion()
+  const { sesion, establecer } = useSesion()
+  const [error, setError] = useState('')
+  const [cerrando, setCerrando] = useState(false)
+  if (!sesion) return null
+  async function salir() {
+    setCerrando(true)
+    try { await api.post('/auth/logout'); establecer(null) }
+    catch (e) { setError(mensajeDeError(e)) }
+    finally { setCerrando(false) }
+  }
 
   return (
     <header className="sl-barra no-print">
@@ -15,12 +26,14 @@ export function BarraSuperior() {
       </div>
       <div className="sl-empujar">
         <small>USUARIO</small>
-        <b>{sesion.usuario}</b>
+        <b>{sesion.nombre}</b>
       </div>
       <div>
         <small>ROL</small>
-        <b>{sesion.rol}</b>
+        <b>{sesion.nombreRol}</b>
       </div>
+      <button type="button" disabled={cerrando} onClick={salir}>Cerrar sesión</button>
+      {error && <span role="alert">{error}</span>}
     </header>
   )
 }

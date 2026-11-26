@@ -1,5 +1,6 @@
+import { renderConUsuario as render } from '../../test/usuario';
+
 import {
-  render,
   screen,
   fireEvent,
   act

@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Aviso } from '../../compartido/Aviso'
 import { Cargando } from '../../compartido/Cargando'
 import { MensajeError } from '../../compartido/MensajeError'
-import { SESION } from '../../compartido/sesion'
+import { useSesionActiva } from '../../compartido/sesionContext'
 import { cancelarPago, mensajeDeError, obtenerCobro, registrarPagos } from './cobroApi'
 import { ComprobantePago } from './ComprobantePago'
 import { ROLES_CON_PERMISO_ESPECIAL } from './datosCobro'
@@ -19,7 +19,8 @@ type Vista = 'cobro' | 'registrada'
 export default function PaginaCobro() {
   const [parametros] = useSearchParams()
   const ordenId = Number(parametros.get('orden') ?? '1')
-  const puedeAutorizar = ROLES_CON_PERMISO_ESPECIAL.includes(SESION.rol)
+  const sesion = useSesionActiva()
+  const puedeAutorizar = ROLES_CON_PERMISO_ESPECIAL.includes(sesion.rol)
 
   const [datos, setDatos] = useState<CobroOrden | null>(null)
   const [errorCarga, setErrorCarga] = useState('')
@@ -120,7 +121,7 @@ export default function PaginaCobro() {
           descuentoInicial={datos.descuento}
           facturaInicial={datos.factura}
           puedeAutorizar={puedeAutorizar}
-          usuario={SESION.usuario}
+          usuario={sesion.nombre}
           enviando={enviando}
           onRegistrar={(envio) => guardar(envio, false)}
           onDejarPendiente={(envio) => guardar(envio, true)}
@@ -137,7 +138,7 @@ export default function PaginaCobro() {
           bitacora={datos.bitacora}
           folioTicket={'T-' + orden.folio.slice(3)}
           puedeCancelar={puedeAutorizar}
-          usuario={SESION.usuario}
+          usuario={sesion.nombre}
           enviando={enviando}
           onRegistrarOtroPago={() => {
             setErrorAccion('')

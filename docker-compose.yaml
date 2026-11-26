@@ -25,6 +25,8 @@ services:
     command: sh -c "npm run db:preparar && npm start"
     environment:
       PORT: 4000
+      SESION_SECRETO: ${SESION_SECRETO:-}
+      ORIGENES_PERMITIDOS: ${ORIGENES_PERMITIDOS:-http://localhost:5173,http://localhost:8080}
       DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:-78357Cas}@db:3306/softlab_db
     ports:
       - "4000:4000"
@@ -37,7 +39,6 @@ services:
       context: ./frontend
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:4000/api}
-        VITE_TENANT_ID: ${VITE_TENANT_ID:-1}
     container_name: softlab_frontend
     restart: unless-stopped
     ports:

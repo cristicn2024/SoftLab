@@ -1,3 +1,4 @@
+import { Permiso } from '../../auth/decoradores/permiso.decorator';
 import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { UsuarioActual } from '../../auth/decoradores/usuario-actual.decorator';
@@ -6,6 +7,7 @@ import { PlantillasService } from './dominio/plantillas.service';
 import { GuardarPlantillaDto } from './dto/guardar-plantilla.dto';
 
 @ApiTags('plantillas')
+@Permiso('plantillas')
 @Controller('templates')
 export class PlantillasController {
   constructor(private readonly servicio: PlantillasService) {}

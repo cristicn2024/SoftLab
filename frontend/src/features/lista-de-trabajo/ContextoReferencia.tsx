@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '../../services/api'
-import { SESION } from '../../compartido/sesion'
+import { useSesionActiva } from '../../compartido/sesionContext'
 
 export type ContextoReferencia = { processedAt: string | null; condition: string; weeks: number | null }
 
@@ -12,12 +12,13 @@ function fechaLocal(value: string | null) {
 export function FormularioContextoReferencia({ orderId, context, locked, onSaved }: {
   orderId: number; context: ContextoReferencia; locked: boolean; onSaved: () => Promise<void>
 }) {
+  const sesion = useSesionActiva()
   const [date, setDate] = useState(() => fechaLocal(context.processedAt))
   const [condition, setCondition] = useState(context.condition)
   const [weeks, setWeeks] = useState(context.weeks === null ? '' : String(context.weeks))
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  const authorized = ['admin', 'chemist', 'Administradora', 'Administrador', 'Químico', 'Química'].includes(SESION.rol)
+  const authorized = sesion.permisos.includes('referencias')
 
   async function save(event: FormEvent) {
     event.preventDefault()
@@ -25,7 +26,7 @@ export function FormularioContextoReferencia({ orderId, context, locked, onSaved
     try {
       await api.post(`/referencias/ordenes/${orderId}/contexto`, {
         processedAt: new Date(date).toISOString(), condition, weeks: weeks === '' ? null : Number(weeks),
-      }, { headers: { 'x-user-name': encodeURIComponent(SESION.usuario), 'x-user-role': encodeURIComponent(SESION.rol) } })
+      })
       await onSaved()
       setMessage('Contexto guardado. Referencias recalculadas para la fecha de procesamiento.')
     } catch (error) {

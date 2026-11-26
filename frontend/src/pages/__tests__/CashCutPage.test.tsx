@@ -1,7 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CashCutPage } from '../CashCutPage';
-import { SesionProvider } from '../../compartido/SesionProvider';
 import { api } from '../../services/api';
 
 vi.mock('../../services/api');
@@ -105,9 +104,7 @@ const unassignedSummary = summary({
 
 function renderPage() {
   return render(
-    <SesionProvider>
       <CashCutPage />
-    </SesionProvider>,
   );
 }
 
@@ -182,7 +179,6 @@ describe('Pantalla de corte de caja (frontend)', () => {
         countedCash: 1400,
         observation: 'Faltante de cambio',
       }),
-      expect.objectContaining({ headers: { 'x-user-id': '2' } }),
     );
   });
 
@@ -221,7 +217,6 @@ describe('Pantalla de corte de caja (frontend)', () => {
         date: '2026-01-15',
         countedCash: 1500,
       }),
-      {},
     );
   });
 

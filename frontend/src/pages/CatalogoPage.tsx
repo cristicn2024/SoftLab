@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
-import { SESION } from '../compartido/sesion';
+import { useSesionActiva } from '../compartido/sesionContext';
 
 type Study = { id: number; code: string; name: string; price: string; status: boolean; department: string; sampleType: string; genderRestriction?: string; containerType?: string | null; sampleVolume?: number | string | null; sampleVolumeUnit?: string | null; fastingHours?: number | null; preparationInstructions?: string | null; medicationWarnings?: string | null; additionalInstructions?: string | null };
 type Profile = Study & { tests: { test: Study; testId: number }[] };
 type Audit = { id: number; userName: string; createdAt: string; before: unknown; after: unknown };
-const headers = { 'x-user-name': encodeURIComponent(SESION.usuario), 'x-user-role': encodeURIComponent(SESION.rol) };
 const empty = { code: '', name: '', price: '0', department: '', sampleType: '', genderRestriction: 'BOTH', containerType: '', sampleVolume: '', sampleVolumeUnit: '', fastingHours: '', preparationInstructions: '', medicationWarnings: '', additionalInstructions: '', status: true, testIds: [] as number[] };
 
 export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' }) {
@@ -20,16 +19,19 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
   const [showAudit, setShowAudit] = useState(false);
   const admin = ['admin', 'Administradora', 'Administrador'].includes(SESION.rol);
   const verBitacora = (useLocation().state as { verBitacora?: boolean } | null)?.verBitacora === true;
+  const sesion = useSesionActiva()
+  const admin = sesion.permisos.includes('catalogo.editar');
   const message = (e: unknown) => {
     const body = (e as { response?: { data?: { message?: string; error?: string | { mensaje?: string } } } }).response?.data;
     return body?.message ?? (typeof body?.error === 'string' ? body.error : body?.error?.mensaje) ?? 'No se pudo completar la operación';
   };
-  async function load() { setCatalog((await api.get('/catalogo', { headers })).data); }
+  async function load() { setCatalog((await api.get('/catalogo')).data); }
   useEffect(() => {
     let active = true;
     setEditing(false); setShowAudit(false); setError('');
     api.get('/catalogo', { headers }).then(r => { if (active) setCatalog(r.data); }).catch(e => { if (active) setError(message(e)); });
     if (verBitacora && kind === 'studies') api.get('/catalogo/bitacora', { headers }).then(r => { if (active) { setAudits(r.data); setShowAudit(true); } }).catch(e => { if (active) setError(message(e)); });
+    api.get('/catalogo').then(r => { if (active) setCatalog(r.data); }).catch(e => { if (active) setError(message(e)); });
     return () => { active = false; };
   }, [kind, verBitacora]);
   function edit(item?: Study | Profile) {
@@ -43,8 +45,8 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
   async function save(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError('');
     try {
-      if (id) await api.put(`/catalogo/${kind}/${id}`, draft, { headers });
-      else await api.post(`/catalogo/${kind}`, draft, { headers });
+      if (id) await api.put(`/catalogo/${kind}/${id}`, draft);
+      else await api.post(`/catalogo/${kind}`, draft);
       await load(); setEditing(false);
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
@@ -53,6 +55,7 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
     {admin && <><button onClick={() => edit()}>Crear {kind === 'studies' ? 'estudio' : 'perfil'}</button>{' '}
       <button onClick={async () => { try { setAudits((await api.get('/catalogo/bitacora', { headers })).data); setShowAudit(true); } catch (e) { setError(message(e)); } }}>Ver bitácora</button>{' '}
       {kind === 'studies' && <Link to="/catalogo/estudios/externos">Estudios externos</Link>}</>}
+      <button onClick={async () => { try { setAudits((await api.get('/catalogo/bitacora')).data); setShowAudit(true); } catch (e) { setError(message(e)); } }}>Ver bitácora</button></>}
     {error && <p role="alert">{error}</p>}
     {editing && <form onSubmit={save} style={{ display: 'grid', gap: 12, maxWidth: 640, margin: '24px 0' }}>
       <h2>{id ? 'Editar' : 'Crear'} {kind === 'studies' ? 'estudio' : 'perfil'}</h2>

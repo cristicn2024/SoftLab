@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderConUsuario as render } from '../../../test/usuario';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PaginaEntrega from '../PaginaEntrega';
@@ -87,10 +88,6 @@ describe('Pantalla de entrega de resultados (frontend)', () => {
         { channel: 'email' },
         expect.objectContaining({
           responseType: 'blob',
-          headers: {
-            'x-user-name': encodeURIComponent('Laura Méndez'),
-            'x-user-role': encodeURIComponent('Administradora'),
-          },
         }),
       ),
     );

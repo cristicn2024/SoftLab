@@ -1,3 +1,4 @@
+import { EnSucursal, Permiso } from '../../auth/decoradores/permiso.decorator';
 import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { UsuarioActual } from '../../auth/decoradores/usuario-actual.decorator';
 import type { Sesion } from '../../auth/dominio/sesion';
@@ -7,15 +8,17 @@ import { WorklistService } from './dominio/worklist.service';
 
 const ID_ORDEN_INVALIDO = 'El id de la orden no es válido.';
 
+@Permiso('resultados')
 @Controller('worklist')
 export class WorklistController {
   constructor(private readonly servicio: WorklistService) {}
 
   @Get()
   listar(@UsuarioActual() sesion: Sesion) {
-    return this.servicio.getWorklist(sesion.tenantId);
+    return this.servicio.getWorklist(sesion.tenantId, new Date(), sesion.sucursalId);
   }
 
+  @EnSucursal('order', 'orderId')
   @Get('orders/:orderId')
   buscar(
     @UsuarioActual() sesion: Sesion,
@@ -24,6 +27,7 @@ export class WorklistController {
     return this.servicio.getOrder(sesion.tenantId, orderId);
   }
 
+  @EnSucursal('order', 'orderId')
   @Post('orders/:orderId/results')
   @HttpCode(201)
   async guardar(

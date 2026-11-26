@@ -1,28 +1,14 @@
 import { ValidationPipe } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { json } from 'express';
-import { SesionPorEncabezadosGuard } from './auth/guards/sesion-por-encabezados.guard';
-import { RolesGuard } from './auth/guards/roles.guard';
+import { json, type Request, type Response, type NextFunction } from 'express';
 import { DominioExceptionFilter } from './comun/filtros/dominio.filter';
 import { HttpExceptionFilter } from './comun/filtros/http.filter';
 import { RegistroMiddleware } from './comun/middleware/registro.middleware';
 
-function opcionesDeCors() {
-  const expuestos = ['Location', 'X-Request-Id'];
-  const configurados = process.env.ORIGENES_PERMITIDOS;
-  if (!configurados) return { exposedHeaders: expuestos };
-
-  const origenes: string[] = [];
-  for (const origen of configurados.split(',')) {
-    origenes.push(origen.trim());
-  }
-  return {
-    origin: origenes,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    exposedHeaders: expuestos,
-  };
+function origenesPermitidos() {
+  const locales = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173,http://localhost:8080';
+  return (process.env.ORIGENES_PERMITIDOS ?? locales).split(',').map(s => s.trim()).filter(Boolean);
 }
 
 function configurarSwagger(app: NestExpressApplication) {
@@ -30,15 +16,24 @@ function configurarSwagger(app: NestExpressApplication) {
     .setTitle('SoftLab API')
     .setDescription('Sistema de gestión para laboratorios clínicos pequeños')
     .setVersion('1.0')
-    .addApiKey({ type: 'apiKey', name: 'x-tenant-id', in: 'header' }, 'tenant')
-    .addSecurityRequirements('tenant')
+    .addCookieAuth('softlab_sesion')
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
 }
 
 export function configurarApp(app: NestExpressApplication) {
   app.setGlobalPrefix('api');
-  app.enableCors(opcionesDeCors());
+  const origin = origenesPermitidos();
+  app.enableCors({ origin, credentials: true, exposedHeaders: ['Location', 'X-Request-Id'] });
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const sitio = req.headers.origin;
+    if (sitio && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
+        !origin.includes(sitio) && sitio !== req.protocol + '://' + req.get('host')) {
+      res.sendStatus(403);
+      return;
+    }
+    next();
+  });
 
   const registro = new RegistroMiddleware();
   app.use(registro.use.bind(registro));
@@ -53,9 +48,6 @@ export function configurarApp(app: NestExpressApplication) {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter(), new DominioExceptionFilter());
-
-  const reflector = app.get(Reflector);
-  app.useGlobalGuards(new SesionPorEncabezadosGuard(reflector), new RolesGuard(reflector));
 
   configurarSwagger(app);
 }

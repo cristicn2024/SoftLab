@@ -1,0 +1,10 @@
+.sl-acceso { min-height: 100dvh; display: grid; place-items: center; padding: 1rem; background: #f2f6fa; color: #173047; }
+.sl-acceso section { width: min(100%, 25rem); box-sizing: border-box; padding: 2rem; border: 1px solid #cddae3; border-radius: .75rem; background: white; }
+.sl-acceso-marca { font-weight: 700; color: #175571; }
+.sl-acceso form, .sl-acceso label { display: grid; gap: .5rem; }
+.sl-acceso form { gap: 1.25rem; }
+.sl-acceso input, .sl-acceso select, .sl-acceso button { font: inherit; padding: .7rem; border-radius: .35rem; }
+.sl-acceso input, .sl-acceso select { border: 1px solid #899ba8; min-width: 0; }
+.sl-acceso button { color: white; background: #165575; border: 0; cursor: pointer; }
+.sl-acceso button:disabled { opacity: .65; }
+.sl-acceso [role=alert] { color: #992f22; margin: 0; }

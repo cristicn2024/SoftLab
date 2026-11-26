@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { configurarApp } from '../../configurar-app';
+import { configurarApp } from '../../__tests__/sesion-de-prueba';
 import { FakeRenderer, FakeRepository, releaseOrder } from './dominio/reportes.escenarios';
 import { ReportesModule } from './reportes.module';
 import { REPORTES_PDF_RENDERER, REPORTES_REPOSITORY } from './reportes.tokens';

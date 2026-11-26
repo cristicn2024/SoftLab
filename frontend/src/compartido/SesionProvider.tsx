@@ -1,17 +1,18 @@
-import { useCallback, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import { SESION } from './sesion';
-import { SesionContext } from './sesionContext';
-import type { DatosSesion } from './sesionContext';
+import { useEffect, useState, type ReactNode } from 'react';
+import { api } from './api';
+import { SesionContext, type DatosSesion } from './sesionContext';
 
 export function SesionProvider({ children }: { children: ReactNode }) {
-  const [sesion, setSesion] = useState<DatosSesion>(SESION);
-
-  const actualizarSesion = useCallback((cambios: Partial<DatosSesion>) => {
-    setSesion(actual => ({ ...actual, ...cambios }));
+  const [sesion, establecer] = useState<DatosSesion | null>(null);
+  const [cargando, cargar] = useState(true);
+  useEffect(() => {
+    let activo = true;
+    const expirar = () => establecer(null);
+    window.addEventListener('softlab:sesion-expirada', expirar);
+    api.get<DatosSesion>('/auth/sesion').then(({ data }) => {
+      if (activo) establecer(data);
+    }).catch(() => {}).finally(() => { if (activo) cargar(false); });
+    return () => { activo = false; window.removeEventListener('softlab:sesion-expirada', expirar); };
   }, []);
-
-  const valor = useMemo(() => ({ sesion, actualizarSesion }), [sesion, actualizarSesion]);
-
-  return <SesionContext.Provider value={valor}>{children}</SesionContext.Provider>;
+  return <SesionContext.Provider value={{ sesion, establecer, cargando }}>{children}</SesionContext.Provider>;
 }

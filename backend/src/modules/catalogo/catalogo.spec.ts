@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { CatalogoModule } from './catalogo.module';
 import { PrismaService } from '../../prisma/prisma.service';
-import { configurarApp } from '../../configurar-app';
+import { configurarApp } from '../../__tests__/sesion-de-prueba';
 import type { INestApplication } from '@nestjs/common';
 
 describe('Catálogo', () => {

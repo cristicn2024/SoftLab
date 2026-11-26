@@ -1,5 +1,7 @@
+import { randomBytes } from 'node:crypto';
 import { Prisma, PrismaClient } from '@prisma/client';
-import { randomBytes, scryptSync } from 'node:crypto';
+import { hashClave } from '../../src/auth/claves';
+import { crearRolesBase } from './roles';
 import {
   buildLiveSummary,
   buildSnapshot,
@@ -21,9 +23,9 @@ import type { EstudioDef } from './demo-catalogo';
 import { CORTES_CERRADOS, MEDICOS, ORDENES, PACIENTES, USUARIOS } from './demo-ordenes';
 import type { OrdenDef, Sucursal } from './demo-ordenes';
 
-type Tx = Prisma.TransactionClient;
+import { CLAVE_DEMO, crearCuentasDeAcceso } from './acceso-demo';
 
-export const CLAVE_DEMO = 'softlab2026';
+type Tx = Prisma.TransactionClient;
 const NOMBRE_LABORATORIO = 'Laboratorio Santa Lucía';
 const SUBDOMINIO = 'central';
 const ID_PREFERIDO = 1;
@@ -54,12 +56,6 @@ interface OrdenCreada {
 export interface ResumenDemo {
   tenantId: number;
   filas: Array<Record<string, string | number>>;
-}
-
-function hashClave(clave: string): string {
-  const sal = randomBytes(16).toString('hex');
-  const hash = scryptSync(clave, sal, 32).toString('hex');
-  return `scrypt$${sal}$${hash}`;
 }
 
 function pesos(valor: number): string {
@@ -285,7 +281,7 @@ function calcularBandera(creado: EstudioCreado, parametro: string, valor: string
 
 export async function sembrarDemo(prisma: PrismaClient): Promise<ResumenDemo> {
   const ahora = new Date();
-  const clave = hashClave(CLAVE_DEMO);
+
 
   return prisma.$transaction(
     async (tx) => {
@@ -302,6 +298,7 @@ export async function sembrarDemo(prisma: PrismaClient): Promise<ResumenDemo> {
       sucursales.norte = norte.id;
 
       const usuarios: Record<string, { id: number; nombre: string }> = {};
+      const roles = await crearRolesBase(tx, tenantId);
       for (const def of USUARIOS) {
         const usuario = await tx.user.create({
           data: {
@@ -309,12 +306,15 @@ export async function sembrarDemo(prisma: PrismaClient): Promise<ResumenDemo> {
             branchId: sucursales[def.sucursal],
             fullName: def.nombre,
             email: def.correo,
-            passwordHash: clave,
+            passwordHash: await hashClave(CLAVE_DEMO),
             role: def.rol,
+            accessRoleId: roles[def.rol],
           },
         });
         usuarios[def.clave] = { id: usuario.id, nombre: def.nombre };
       }
+
+      await crearCuentasDeAcceso(tx, tenantId, central.id, norte.id, roles.chemist);
 
       const medicos: Array<{ doctorId: number; practitionerId: number; nombre: string }> = [];
       for (const def of MEDICOS) {

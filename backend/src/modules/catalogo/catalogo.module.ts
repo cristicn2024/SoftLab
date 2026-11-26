@@ -1,13 +1,14 @@
+import { Permiso } from '../../auth/decoradores/permiso.decorator';
 import { BadRequestException, Body, ConflictException, Controller, Get, Module, NotFoundException, Param, Post, Put } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { UsuarioActual } from '../../auth/decoradores/usuario-actual.decorator';
-import { Roles } from '../../auth/decoradores/roles.decorator';
 import type { Sesion } from '../../auth/dominio/sesion';
 import { leerDatosExternos } from '../externos/dominio/externos.rules';
 import { LaboratorioExternoNoValidoError } from '../externos/dominio/externos.errors';
 
+@Permiso('catalogo')
 @Controller('catalogo')
 export class CatalogoController {
   constructor(private readonly prisma: PrismaService) {}
@@ -23,19 +24,19 @@ export class CatalogoController {
   }
 
   @Get('bitacora')
-  @Roles('admin')
+  @Permiso('catalogo.editar')
   audit(@UsuarioActual() sesion: Sesion) {
     return this.prisma.catalogAudit.findMany({ where: { tenantId: sesion.tenantId }, orderBy: { id: 'desc' }, take: 200 });
   }
 
   @Post(':kind')
-  @Roles('admin')
+  @Permiso('catalogo.editar')
   crear(@UsuarioActual() sesion: Sesion, @Param('kind') kind: string, @Body() body: Record<string, unknown>) {
     return this.guardar(sesion, kind, body);
   }
 
   @Put(':kind/:id')
-  @Roles('admin')
+  @Permiso('catalogo.editar')
   editar(@UsuarioActual() sesion: Sesion, @Param('kind') kind: string, @Param('id') rawId: string, @Body() body: Record<string, unknown>) {
     const id = Number(rawId);
     if (!Number.isSafeInteger(id) || id <= 0) throw new BadRequestException('ID inválido');

@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { configurarApp } from '../../configurar-app';
+import { configurarApp } from '../../__tests__/sesion-de-prueba';
 import { FakeRepository, order } from './dominio/cobro.escenarios';
 import { CobroModule } from './cobro.module';
 import { COBRO_REPOSITORY } from './cobro.tokens';

@@ -1,3 +1,4 @@
+import { useSesionActiva } from '../sesionContext'
 import { useState, useEffect, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { elementoActivo, MENU } from './menu'
@@ -68,14 +69,17 @@ function Modulo({ elemento, esActivoRuta, ruta }: { elemento: ElementoMenu; esAc
 
 export function BarraLateral() {
   const { pathname } = useLocation()
+  const { permisos } = useSesionActiva()
   const activo = elementoActivo(pathname)
 
   const modulos: ReactNode[] = []
   for (const elemento of MENU) {
+    const visibles = elemento.subelementos.filter(s => s.permiso && permisos.includes(s.permiso))
+    if (!visibles.length) continue
     modulos.push(
       <Modulo
         key={elemento.etiqueta}
-        elemento={elemento}
+        elemento={{ ...elemento, subelementos: visibles }}
         esActivoRuta={activo === elemento}
         ruta={pathname}
       />

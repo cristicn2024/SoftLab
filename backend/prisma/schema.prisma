@@ -69,6 +69,7 @@ model Tenant {
   status      TenantStatus @default(active)
   createdAt   DateTime     @default(now()) @map("created_at")
 
+  accessRoles     AccessRole[]
   branches        Branch[]
   users           User[]
   patients        Patient[]
@@ -106,6 +107,7 @@ model Branch {
   createdAt DateTime @default(now()) @map("created_at")
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  extraAssignments UserBranch[]
   users           User[]
   orders          Order[]
   reportTemplates ReportTemplate[]
@@ -122,6 +124,11 @@ model User {
   branchId     Int?     @map("branch_id")
   fullName     String   @map("full_name") @db.VarChar(150)
   email        String   @unique @db.VarChar(150)
+  active       Boolean  @default(true)
+  accessRoleId Int?     @map("access_role_id")
+  accessRole   AccessRole? @relation(fields: [accessRoleId], references: [id], onDelete: Restrict)
+  extraBranches UserBranch[]
+  sessions      AuthSession[]
   passwordHash String   @map("password_hash") @db.VarChar(255)
   role         UserRole
   createdAt    DateTime @default(now()) @map("created_at")
@@ -729,4 +736,56 @@ model ShipmentOrder {
   @@index([testId])
   @@index([externalLabId])
   @@map("shipment_orders")
+// TODO HU 1–3: administrar estos roles y asignaciones desde sus propios módulos.
+model AccessRole {
+  id Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+  code String @db.VarChar(64)
+  name String @db.VarChar(100)
+  permissions Json
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users User[]
+  @@unique([tenantId, code])
+  @@map("access_roles")
+}
+
+model UserBranch {
+  userId Int @map("user_id")
+  branchId Int @map("branch_id")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  @@id([userId, branchId])
+  @@map("user_branches")
+}
+
+model AuthSession {
+  digest String @id @db.Char(64)
+  userId Int @map("user_id")
+  // NULL identifica un desafío de selección, sin acceso a rutas privadas.
+  branchId Int? @map("branch_id")
+  expiresAt DateTime @map("expires_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model LoginAttempt {
+  key String @id @db.Char(64)
+  count Int
+  expiresAt DateTime @map("expires_at")
+  @@index([expiresAt])
+  @@map("login_attempts")
+}
+
+// TODO HU 4: consumir estos eventos de solo inserción en la bitácora general.
+model AuthEvent {
+  id Int @id @default(autoincrement())
+  action String @db.VarChar(20)
+  login String @db.VarChar(150)
+  tenantId Int?
+  userId Int?
+  branchId Int?
+  ip String @db.VarChar(45)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  @@map("auth_events")
 }

@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { configurarApp } from '../../configurar-app';
+import { configurarApp } from '../../__tests__/sesion-de-prueba';
 import { catalogProfile, catalogTest, FakeRepository } from './dominio/ordenes.escenarios';
 import { OrdenesModule } from './ordenes.module';
 import { ORDENES_REPOSITORY } from './ordenes.tokens';

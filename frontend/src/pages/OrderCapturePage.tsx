@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { SESION } from '../compartido/sesion';
+import { useSesionActiva } from '../compartido/sesionContext';
 
 interface Concept {
   id: number;
@@ -55,6 +55,7 @@ function textoDeEnvios(folios: string[] | undefined): string {
 }
 
 export const OrderCapturePage: React.FC = () => {
+  const sesion = useSesionActiva()
   const [patient, setPatient] = useState<Patient | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -88,7 +89,7 @@ export const OrderCapturePage: React.FC = () => {
     api.get('/branches').then((res) => {
       const loaded: Branch[] = res.data ?? [];
       setBranches(loaded);
-      setBranchId((current) => current ?? loaded.find((branch) => branch.name === SESION.sucursal)?.id ?? loaded[0]?.id ?? null);
+      setBranchId((current) => current ?? loaded.find((branch) => branch.name === sesion.sucursal)?.id ?? loaded[0]?.id ?? null);
     }).catch(() => setPreviewError('No se pudieron consultar las sucursales del laboratorio.'));
   }, []);
 
@@ -386,7 +387,7 @@ const addConcept = (concept: Concept) => {
             {preview.indications.conflictos.length > 0 && <label><input type="checkbox" checked={instructionReviewConfirmed} onChange={(e) => setInstructionReviewConfirmed(e.target.checked)} /> Confirmo que revisé los requisitos configurados con conflicto.</label>}
             {preview.incompatibleStudies.map((study) => <div role="alert" key={study.testId} style={styles.warningBox}>
               <strong>{study.code} · {study.name}:</strong> {study.reason}. La orden requiere excepción administrativa.
-              {['admin', 'Administradora', 'Administrador'].includes(SESION.rol) && <label>Motivo de excepción * <textarea required maxLength={500} value={exceptionReasons[study.testId] ?? ''} onChange={(e) => setExceptionReasons({ ...exceptionReasons, [study.testId]: e.target.value })} /></label>}
+              {['admin', 'Administradora', 'Administrador'].includes(sesion.rol) && <label>Motivo de excepción * <textarea required maxLength={500} value={exceptionReasons[study.testId] ?? ''} onChange={(e) => setExceptionReasons({ ...exceptionReasons, [study.testId]: e.target.value })} /></label>}
             </div>)}
             <button type="button" onClick={() => window.print()}>Imprimir indicaciones</button>
           </section>}
@@ -454,7 +455,7 @@ const addConcept = (concept: Concept) => {
                   backgroundColor: orderItems.length > 0 ? '#1b3b2b' : '#d4d4d4',
                   cursor: orderItems.length > 0 ? 'pointer' : 'not-allowed',
                 }}
-                disabled={orderItems.length === 0 || !patient || !branchId || !preview || Boolean(previewError) || (preview.indications.conflictos.length > 0 && !instructionReviewConfirmed) || (preview.incompatibleStudies.length > 0 && (!['admin', 'Administradora', 'Administrador'].includes(SESION.rol) || preview.incompatibleStudies.some((study) => !exceptionReasons[study.testId]?.trim())))}
+                disabled={orderItems.length === 0 || !patient || !branchId || !preview || Boolean(previewError) || (preview.indications.conflictos.length > 0 && !instructionReviewConfirmed) || (preview.incompatibleStudies.length > 0 && (!['admin', 'Administradora', 'Administrador'].includes(sesion.rol) || preview.incompatibleStudies.some((study) => !exceptionReasons[study.testId]?.trim())))}
                 onClick={handleConfirmOrder}
               >
                 Continuar al cobro

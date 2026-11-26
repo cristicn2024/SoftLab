@@ -1,3 +1,4 @@
+import { EnSucursal, Permiso } from '../../auth/decoradores/permiso.decorator';
 import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { UsuarioActual } from '../../auth/decoradores/usuario-actual.decorator';
@@ -16,15 +17,18 @@ function actorDe(sesion: Sesion): Actor {
 }
 
 @ApiTags('cobro')
+@Permiso('cobro')
 @Controller()
 export class CobroController {
   constructor(private readonly servicio: CobroService) {}
 
+  @EnSucursal('order', 'id')
   @Get('orders/:id/billing')
   obtener(@UsuarioActual() sesion: Sesion, @Param('id', new IdPositivoPipe(ID_ORDEN_INVALIDO)) id: number) {
     return this.servicio.getBilling(sesion.tenantId, id);
   }
 
+  @EnSucursal('order', 'id')
   @Post('orders/:id/payments')
   @HttpCode(201)
   registrar(
@@ -35,6 +39,7 @@ export class CobroController {
     return this.servicio.registerPayments(actorDe(sesion), id, dto);
   }
 
+  @EnSucursal('payment', 'id')
   @Post('payments/:id/cancel')
   @HttpCode(200)
   cancelar(

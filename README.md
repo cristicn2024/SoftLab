@@ -25,12 +25,12 @@ SoftLab reúne los flujos de recepción y captura de resultados en una interfaz 
 - Lista de trabajo con pacientes y estudios pendientes (`/resultados/lista-de-trabajo`).
 - Captura rápida: Enter avanza al siguiente parámetro y Ctrl + Enter guarda y abre la siguiente orden.
 - El rango de referencia se elige con el sexo y la edad del paciente; si no hay rango, se avisa y se captura sin interpretación automática.
-- API en `/api/worklist` (requiere el encabezado `x-tenant-id`). Sus datos de prueba se cargan solos al correr `npm run dev`.
+- API en `/api/worklist` (requiere sesión con permiso de resultados). Sus datos de prueba se cargan solos al correr `npm run dev`.
 - Pruebas: `npm test` en `backend` y en `frontend`.
 
 ## Cómo correr el proyecto
 
-Se necesita Node 20 o más reciente y un MySQL 8 corriendo. Para tener el MySQL sin instalar nada, en la raíz del repositorio:
+Se necesita Node 24.7 o posterior y MySQL 8.0.29 o posterior corriendo. Para tener el MySQL sin instalar nada, en la raíz del repositorio:
 
 ```powershell
 docker compose up -d db
@@ -58,9 +58,39 @@ Para levantar todo con Docker: `docker compose up --build`. El backend prepara l
 
 ### Datos de prueba
 
-Hay un solo laboratorio de demo, Santa Lucía (id 1, el que manda el frontend en `x-tenant-id`), con una historia completa: 2 sucursales, 5 usuarios, 3 médicos, 8 pacientes, catálogo con parámetros y rangos de referencia, perfiles, plantilla de informe y 21 órdenes repartidas entre hoy, ayer y antier. Cubren nueva orden, lista de trabajo y captura, cobro (sin pago, parcial, liquidada, con descuento, pago anulado y orden cancelada), entrega y corte de caja (dos cortes cerrados y turnos abiertos). Al terminar, la consola imprime el ID y el folio de cada orden con el caso que prueba.
+Hay un solo laboratorio de demo, Santa Lucía (la sesión determina el laboratorio), con una historia completa: 2 sucursales, 8 usuarios, 3 médicos, 8 pacientes, catálogo con parámetros y rangos de referencia, perfiles, plantilla de informe y 21 órdenes repartidas entre hoy, ayer y antier. Cubren nueva orden, lista de trabajo y captura, cobro (sin pago, parcial, liquidada, con descuento, pago anulado y orden cancelada), entrega y corte de caja (dos cortes cerrados y turnos abiertos). Al terminar, la consola imprime el ID y el folio de cada orden con el caso que prueba.
 
-Las cuentas de prueba usan el correo `@santalucia.demo` y la contraseña `softlab2026`. Todavía no hay pantalla de login: la contraseña queda guardada con hash para cuando exista.
+### HU 7.5 — Inicio de sesión
+
+Abre [/login](http://localhost:5173/login). El usuario es el correo. Estas credenciales son **solo para desarrollo**. Las cuatro cuentas comparten la contraseña `softlab2026`.
+
+| Usuario | Resultado esperado |
+| --- | --- |
+| `laura.mendez@santalucia.demo` | Administración. Abre Nueva orden en Clínica Central. |
+| `coordinacion@santalucia.demo` | Coordinación de resultados. Elige Clínica Central o Clínica Norte y abre Lista de trabajo. |
+| `inactivo@santalucia.demo` | Acceso denegado con el mismo mensaje que una contraseña incorrecta. |
+| `sin.sucursal@santalucia.demo` | Acceso denegado con indicación de solicitar una sucursal. |
+
+En una base de desarrollo que ya contiene el demo, ejecuta `npm run db:preparar` y luego `npm run db:seed:login` desde `backend`. Este último agrega las cuentas de prueba faltantes y conserva los datos. El seed completo se omite cuando `NODE_ENV=production`.
+
+**Contrato de la API**
+
+| Método y ruta | Resultado |
+| --- | --- |
+| `POST /api/auth/login` con `{usuario, clave}` | Devuelve `{sesion}` si hay una sucursal o `{sucursales}` y un desafío de hasta cinco minutos si hay varias. |
+| `POST /api/auth/sucursal` con `{sucursalId}` | Consume el desafío una sola vez y emite una nueva cookie de sesión. |
+| `GET /api/auth/sesion` | Devuelve usuario, rol, permisos y sucursal vigentes. Una sesión inválida recibe 401. |
+| `POST /api/auth/logout` | Revoca la credencial en MySQL, elimina la cookie y devuelve 204. |
+
+El panel inicial es el primer módulo navegable en la lista de permisos del rol. Un rol sin módulos recibe un panel vacío con opción de salir. La sucursal principal existente y las asignaciones adicionales del mismo laboratorio forman la lista de opciones. Las consultas de autenticación releen el estatus, el rol y las asignaciones. Los hashes scrypt del demo anterior se actualizan a Argon2id después de verificar la contraseña.
+
+Configura las variables en `backend/.env.example`. En producción usa HTTPS, `NODE_ENV=production`, un `SESION_SECRETO` aleatorio compartido y el origen exacto del frontend en `ORIGENES_PERMITIDOS`. La cookie usa HttpOnly y SameSite=Strict. Frontend y API deben pertenecer al mismo sitio. El límite de intentos usa la IP de la conexión. Detrás de un proxy, configura la red de confianza antes de atribuir IP de cliente desde encabezados.
+
+En instalaciones gestionadas con migraciones, aplica `202611260001_inicio_sesion` sobre el esquema previo. El flujo local con `db push` instala también los roles iniciales y los triggers. La cuenta de la aplicación debe carecer de privilegios DDL sobre la bitácora después de aprovisionarla. Los eventos conservan correo, identificadores conocidos, IP y fecha con milisegundos. Un fallo previo a la elección de sucursal deja ese campo vacío.
+
+**Verificación**. En `backend`, ejecuta `npm run test:login` y `npm test`. En `frontend`, ejecuta `npm test`. Las pruebas de la HU usan servicios de autenticación reales con persistencia de prueba y React Router con respuestas de API simuladas.
+
+**Integración pendiente**. Las HU 1–3 administrarán los roles, sus permisos y asignaciones. La HU 4 podrá consultar los eventos de autenticación. La HU 6 administrará el campo `active` que el guard ya comprueba.
 
 | Comando (en `backend`) | Qué hace |
 | --- | --- |

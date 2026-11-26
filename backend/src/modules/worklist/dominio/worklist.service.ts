@@ -135,8 +135,8 @@ function isRepeated(entries: ResultEntry[], index: number): boolean {
 export class WorklistService {
   constructor(private readonly repository: WorklistRepository) {}
 
-  async getWorklist(tenantId: number, today: Date = new Date()): Promise<Worklist> {
-    const records = await this.repository.findReadyOrders(tenantId);
+  async getWorklist(tenantId: number, today: Date = new Date(), branchId?: number): Promise<Worklist> {
+    const records = await this.repository.findReadyOrders(tenantId, branchId);
     const worklist: Worklist = { totalPending: 0, withoutRange: 0, orders: [] };
 
     for (const record of records) {

@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSesion } from '../compartido/sesionContext';
 import { api } from '../services/api';
 
 interface BranchOption {
@@ -258,7 +257,6 @@ const KpiCard: React.FC<{
 );
 
 export const CashCutPage: React.FC = () => {
-  const { actualizarSesion } = useSesion();
 
   const [context, setContext] = useState<CashCutContext | null>(null);
   const [contextLoading, setContextLoading] = useState(true);
@@ -315,24 +313,6 @@ export const CashCutPage: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!context) return;
-    const currentBranchName =
-      context.currentUser?.branchId != null
-        ? context.branches.find(item => item.id === context.currentUser?.branchId)?.name
-        : undefined;
-    const branch =
-      data?.scope.branchName ??
-      context.branches.find(item => item.id === branchId)?.name ??
-      currentBranchName;
-
-    actualizarSesion({
-      laboratorio: context.tenant.name,
-      sucursal: branch ?? 'Clínica Central',
-      usuario: context.currentUser?.fullName ?? 'Sin asignar',
-      rol: context.currentUser ? (context.currentUser.role === 'admin' ? 'Administradora' : 'Cajero') : 'Sin asignar'
-    });
-  }, [actualizarSesion, branchId, context, data]);
 
   useEffect(() => {
     if (!branchId || !date) return;
@@ -438,10 +418,7 @@ export const CashCutPage: React.FC = () => {
           date,
           countedCash: countedNumber,
           observation: observation.trim() || undefined
-        },
-        context?.currentUser
-          ? { headers: { 'x-user-id': String(context.currentUser.id) } }
-          : {}
+        }
       );
       setRefreshKey(key => key + 1);
     } catch (error) {

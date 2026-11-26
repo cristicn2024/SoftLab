@@ -50,12 +50,12 @@ export class OrdenesService {
     }
   }
 
-  async checkOpenOrder(tenantId: number, rawPatientId: unknown, now: Date): Promise<OpenOrderStatus> {
+  async checkOpenOrder(tenantId: number, rawPatientId: unknown, now: Date, branchId?: number): Promise<OpenOrderStatus> {
     const patientId = parseOpenOrderPatientId(rawPatientId);
     if (patientId === null) return { hasOpenOrder: false, orderId: null };
 
     try {
-      const openOrder = await this.repository.findPendingOrderSince(tenantId, patientId, startOfDay(now));
+      const openOrder = await this.repository.findPendingOrderSince(tenantId, patientId, startOfDay(now), branchId);
       if (!openOrder) return { hasOpenOrder: false, orderId: null };
       return { hasOpenOrder: true, orderId: openOrder.id || null };
     } catch (error) {

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { renderConUsuario as render } from '../../../test/usuario';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FormularioContextoReferencia } from '../ContextoReferencia';
 import { api } from '../../../services/api';
@@ -14,7 +15,7 @@ describe('Contexto de procesamiento', () => {
     fireEvent.change(screen.getByLabelText('Semanas de embarazo'), { target: { value: '20' } });
     fireEvent.click(screen.getByRole('button', { name: 'Aplicar contexto y recalcular rangos' }));
     await screen.findByText('Contexto guardado. Referencias recalculadas para la fecha de procesamiento.');
-    expect(api.post).toHaveBeenCalledWith('/referencias/ordenes/9/contexto', { processedAt: '2026-01-15T12:00:00.000Z', condition: 'embarazo', weeks: 20 }, expect.objectContaining({ headers: expect.any(Object) }));
+    expect(api.post).toHaveBeenCalledWith('/referencias/ordenes/9/contexto', { processedAt: '2026-01-15T12:00:00.000Z', condition: 'embarazo', weeks: 20 });
     expect(onSaved).toHaveBeenCalledOnce();
   });
   it('bloquea la edición cuando ya se capturaron resultados', () => {

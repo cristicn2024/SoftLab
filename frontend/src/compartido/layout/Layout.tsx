@@ -1,14 +1,21 @@
+import { useSesion } from '../sesionContext'
 import { Suspense } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Cargando } from '../Cargando'
 import { BarraLateral } from './BarraLateral'
 import { BarraSuperior } from './BarraSuperior'
-import { elementoActivo } from './menu'
+import { elementoActivo, panelInicial, rutaPermitida } from './menu'
 import { PiePagina } from './PiePagina'
 import './layout.css'
 
 export function Layout() {
   const { pathname } = useLocation()
+  const { sesion, cargando } = useSesion()
+  if (cargando) return <main role="status">Verificando sesión…</main>
+  if (!sesion) return <Navigate to="/login" replace />
+  if (pathname !== '/panel' && !rutaPermitida(pathname, sesion.permisos)) {
+    return <Navigate to={panelInicial(sesion.permisos)} replace />
+  }
   const activo = elementoActivo(pathname)
 
   let modulo = ''

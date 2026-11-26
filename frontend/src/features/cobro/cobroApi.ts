@@ -1,5 +1,4 @@
 import { isAxiosError } from 'axios'
-import { SESION } from '../../compartido/sesion'
 import { api } from '../../services/api'
 import { aCentavos, fechaHora } from './calculosCobro'
 import type { CobroOrden, MetodoPago } from './datosCobro'
@@ -35,14 +34,6 @@ type CobroApi = {
 
 const METODO: Record<MetodoApi, MetodoPago> = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia' }
 
-// Mientras no haya inicio de sesión, el usuario se manda en encabezados.
-// Se codifican porque los encabezados no aceptan bien acentos.
-function encabezadosUsuario() {
-  return {
-    'x-user-name': encodeURIComponent(SESION.usuario),
-    'x-user-role': encodeURIComponent(SESION.rol),
-  }
-}
 
 function aPantalla(datos: CobroApi): CobroOrden {
   let factura = null
@@ -142,12 +133,11 @@ export async function registrarPagos(ordenId: number, envio: EnvioCobro, dejarPe
       invoice: factura,
       leavePending: dejarPendiente,
     },
-    { headers: encabezadosUsuario() },
   )
   return aPantalla(respuesta.data)
 }
 
 export async function cancelarPago(pagoId: number, motivo: string): Promise<CobroOrden> {
-  const respuesta = await api.post<CobroApi>(`/payments/${pagoId}/cancel`, { reason: motivo }, { headers: encabezadosUsuario() })
+  const respuesta = await api.post<CobroApi>(`/payments/${pagoId}/cancel`, { reason: motivo })
   return aPantalla(respuesta.data)
 }

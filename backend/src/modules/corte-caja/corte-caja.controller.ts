@@ -1,3 +1,4 @@
+import { EnSucursal, Permiso } from '../../auth/decoradores/permiso.decorator';
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -14,26 +15,31 @@ const ID_CORTE_INVALIDO = 'ID de corte inválido';
  * @author Jesús Rodrigo Villegas Argüelles - 261186
  */
 @ApiTags('corte-caja')
+@Permiso('caja')
 @Controller('cash-cuts')
 export class CorteCajaController {
   constructor(private readonly servicio: CorteCajaService) {}
 
   @Get('context')
-  contexto(@UsuarioActual() sesion: Sesion) {
-    return this.servicio.getContext(sesion.tenantId, new Date());
+  async contexto(@UsuarioActual() sesion: Sesion) {
+    const datos = await this.servicio.getContext(sesion.tenantId, new Date());
+    if (sesion.sucursalId === undefined) return datos;
+    return { ...datos, branches: datos.branches.filter(b => b.id === sesion.sucursalId),
+      currentUser: { id: sesion.usuarioId, fullName: sesion.nombre, role: sesion.rol, branchId: sesion.sucursalId } };
   }
 
   @Get('summary')
   resumen(@UsuarioActual() sesion: Sesion, @Query() consulta: ConsultaCorteDto) {
     return this.servicio.getSummary({
       tenantId: sesion.tenantId,
-      branchId: consulta.branchId,
+      branchId: sesion.sucursalId ?? consulta.branchId,
       cashierId: consulta.cashierId,
       shift: consulta.shift,
       date: consulta.date,
     });
   }
 
+  @EnSucursal('cashCut', 'id')
   @Get(':id/export')
   async exportar(
     @UsuarioActual() sesion: Sesion,
@@ -47,8 +53,9 @@ export class CorteCajaController {
   }
 
   @Get()
-  historial(@UsuarioActual() sesion: Sesion) {
-    return this.servicio.getHistory(sesion.tenantId);
+  async historial(@UsuarioActual() sesion: Sesion) {
+    const cortes = await this.servicio.getHistory(sesion.tenantId);
+    return cortes.filter(c => sesion.sucursalId === undefined || c.branch.id === sesion.sucursalId);
   }
 
   @Post('close')
@@ -61,7 +68,7 @@ export class CorteCajaController {
     return this.servicio.closeCut(
       {
         tenantId: sesion.tenantId,
-        branchId: dto.branchId,
+        branchId: sesion.sucursalId ?? dto.branchId,
         cashierId: dto.cashierId,
         shift: dto.shift,
         date: dto.date,

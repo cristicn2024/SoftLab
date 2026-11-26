@@ -1,13 +1,13 @@
-import { BadRequestException, CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ES_PUBLICO } from '../decoradores/publico.decorator';
-import type { Sesion } from '../dominio/sesion';
-import { leerEncabezado, rolDesdeEncabezado } from '../encabezados';
+import { ES_PUBLICO } from '../auth/decoradores/publico.decorator';
+import type { Sesion } from '../auth/dominio/sesion';
+import { leerEncabezado, rolDesdeEncabezado } from './encabezados-de-prueba';
 
 type Encabezados = Record<string, string | string[] | undefined>;
 
 @Injectable()
-export class SesionPorEncabezadosGuard implements CanActivate {
+export class SesionDePruebaGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(contexto: ExecutionContext): boolean {
@@ -31,6 +31,18 @@ export class SesionPorEncabezadosGuard implements CanActivate {
       rol: rolDesdeEncabezado(leerEncabezado(req.headers['x-user-role'])),
     };
     if (Number.isSafeInteger(usuarioId) && usuarioId > 0) req.user.usuarioId = usuarioId;
+    const permiso = this.reflector.getAllAndOverride<string>('auth:permiso', [contexto.getHandler(), contexto.getClass()]);
+    if (permiso === 'catalogo.editar' && req.user.rol !== 'admin') throw new ForbiddenException();
+    if (permiso === 'referencias' && !['admin', 'chemist'].includes(req.user.rol ?? '')) throw new ForbiddenException();
     return true;
   }
+}
+
+import { configurarApp as configurarProduccion } from '../configurar-app';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+
+// Los escenarios de módulos anteriores inyectan su actor sin una base de autenticación.
+export function configurarApp(app: NestExpressApplication) {
+  configurarProduccion(app);
+  app.useGlobalGuards(new SesionDePruebaGuard(app.get(Reflector)));
 }

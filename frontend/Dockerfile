@@ -8,9 +8,7 @@ RUN npm ci
 COPY . .
 
 ARG VITE_API_URL=http://localhost:4000/api
-ARG VITE_TENANT_ID=1
 ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_TENANT_ID=$VITE_TENANT_ID
 
 RUN npm run build
 

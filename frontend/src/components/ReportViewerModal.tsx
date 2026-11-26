@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { SESION } from '../compartido/sesion';
+import { useSesionActiva } from '../compartido/sesionContext';
 import { mensajeDeError } from '../features/cobro/cobroApi';
 import { ROLES_CON_PERMISO_ESPECIAL } from '../features/cobro/datosCobro';
 
 interface Props { orderId: number; isOpen: boolean; onClose: () => void }
 
 export function ReportViewerModal({ orderId, isOpen, onClose }: Props) {
+  const sesion = useSesionActiva()
   const [pdf, setPdf] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -25,10 +26,7 @@ export function ReportViewerModal({ orderId, isOpen, onClose }: Props) {
     try {
       const response = await api.post(`/reports/orders/${orderId}/pdf`, {
         channel, ...(excepcion ? { reason } : {}),
-      }, { responseType: 'blob', headers: {
-        'x-user-name': encodeURIComponent(SESION.usuario),
-        'x-user-role': encodeURIComponent(SESION.rol),
-      } });
+      }, { responseType: 'blob' });
       setPdf(URL.createObjectURL(response.data));
     } catch (err) {
       const response = (err as { response?: { data?: Blob } }).response;
@@ -58,7 +56,7 @@ export function ReportViewerModal({ orderId, isOpen, onClose }: Props) {
     {blocked && <div>
       <Link to={`/ordenes/cobro?orden=${orderId}`} onClick={onClose}>Registrar pago</Link>
       <p>Al liquidar, vuelve a obtener los resultados. Puedes seguir capturando y validando mientras exista saldo.</p>
-      {ROLES_CON_PERMISO_ESPECIAL.includes(SESION.rol) && <div>
+      {ROLES_CON_PERMISO_ESPECIAL.includes(sesion.rol) && <div>
         <label>Motivo de excepción <textarea value={reason} maxLength={1000} onChange={e => setReason(e.target.value)} /></label>
         <button disabled={busy || !reason.trim()} onClick={() => obtener(true)}>Autorizar excepción y obtener resultados</button>
       </div>}

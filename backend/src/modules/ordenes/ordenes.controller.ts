@@ -1,3 +1,4 @@
+import { EnSucursal, Permiso } from '../../auth/decoradores/permiso.decorator';
 import { BadRequestException, Body, Controller, ForbiddenException, Get, HttpCode, NotFoundException, Param, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { UsuarioActual } from '../../auth/decoradores/usuario-actual.decorator';
@@ -21,13 +22,14 @@ function estudiosParaEnvio(estudios: { id: number; externalLabId: number | null;
 }
 
 @ApiTags('ordenes')
+@Permiso('ordenes')
 @Controller()
 export class OrdenesController {
   constructor(private readonly servicio: OrdenesService, private readonly prisma: PrismaService) {}
 
   @Get('branches')
   sucursales(@UsuarioActual() sesion: Sesion) {
-    return this.prisma.branch.findMany({ where: { tenantId: sesion.tenantId }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
+    return this.prisma.branch.findMany({ where: { tenantId: sesion.tenantId, id: sesion.sucursalId }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
   }
 
   @Get('patients')
@@ -47,6 +49,7 @@ export class OrdenesController {
     return { patientGender: evaluacion.patientGender, indications: evaluacion.indications, incompatibleStudies: evaluacion.incompatibleStudies };
   }
 
+  @EnSucursal('order', 'orderId')
   @Get('orders/:orderId/indications')
   async indicacionesGuardadas(@UsuarioActual() sesion: Sesion, @Param('orderId') rawId: string) {
     const orderId = Number(rawId);
@@ -63,7 +66,7 @@ export class OrdenesController {
 
   @Get('orders/check-open')
   ordenAbierta(@UsuarioActual() sesion: Sesion, @Query('patientId') patientId: unknown) {
-    return this.servicio.checkOpenOrder(sesion.tenantId, patientId, new Date());
+    return this.servicio.checkOpenOrder(sesion.tenantId, patientId, new Date(), sesion.sucursalId);
   }
 
   @Get('doctors')
@@ -90,6 +93,7 @@ export class OrdenesController {
       patientId: dto.patientId, branchId: dto.branchId, doctorId: dto.doctorId, items: dto.items, totalAmount: dto.totalAmount,
     }, new Date());
     const branchId = Number(dto.branchId);
+    if (sesion.sucursalId !== undefined && branchId !== sesion.sucursalId) throw new ForbiddenException('Selecciona la sucursal activa.');
     if (!Number.isSafeInteger(branchId) || branchId <= 0 || !await this.prisma.branch.findFirst({ where: { id: branchId, tenantId: sesion.tenantId }, select: { id: true } })) throw new BadRequestException('La sucursal no pertenece a este laboratorio');
     if (dto.doctorId != null && dto.doctorId !== '') {
       const doctorId = Number(dto.doctorId);

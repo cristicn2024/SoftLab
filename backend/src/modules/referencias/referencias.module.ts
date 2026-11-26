@@ -1,3 +1,4 @@
+import { EnSucursal, Permiso } from '../../auth/decoradores/permiso.decorator';
 import { BadRequestException, Body, Controller, ConflictException, Get, Module, NotFoundException, Param, Post } from '@nestjs/common';
 
 import { Prisma } from '@prisma/client';
@@ -6,7 +7,6 @@ import { PrismaModule } from '../../prisma/prisma.module';
 
 import { PrismaService } from '../../prisma/prisma.service';
 
-import { Roles } from '../../auth/decoradores/roles.decorator';
 
 import { UsuarioActual } from '../../auth/decoradores/usuario-actual.decorator';
 
@@ -14,9 +14,10 @@ import type { Sesion } from '../../auth/dominio/sesion';
 
 import { validateRules } from './referencias.rules';
 
+@Permiso('referencias')
 @Controller('referencias')
 
-@Roles('admin','chemist')
+
 
 export class ReferenciasController {
 
@@ -38,7 +39,8 @@ export class ReferenciasController {
 
  }
 
- @Post('ordenes/:orderId/contexto')
+ @EnSucursal('order', 'orderId')
+  @Post('ordenes/:orderId/contexto')
  async context(@UsuarioActual() s: Sesion, @Param('orderId') raw: string, @Body() body: {processedAt:string;condition:string;weeks:number|null}) {
   const orderId=Number(raw);
   if(!Number.isSafeInteger(orderId)||orderId<=0||!body||typeof body.processedAt!=='string'||!/(Z|[+-]\d{2}:\d{2})$/.test(body.processedAt)) throw new BadRequestException('Fecha de procesamiento inválida');

@@ -70,4 +70,4 @@ export const TASA_IMPUESTO = 0
 
 export const PORCENTAJES_DESCUENTO = [0, 5, 10, 15, 20]
 
-export const ROLES_CON_PERMISO_ESPECIAL = ['Administradora', 'Administrador']
+export const ROLES_CON_PERMISO_ESPECIAL = ['admin']

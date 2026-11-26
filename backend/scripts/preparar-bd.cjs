@@ -48,6 +48,8 @@ if (!crearTablas()) {
   process.exit(1);
 }
 
+if (!correr('npx tsx prisma/actualizar-accesos.ts')) process.exit(1);
+
 if (!correr('npx tsx prisma/seed.ts --si-vacia')) {
   process.exit(1);
 }

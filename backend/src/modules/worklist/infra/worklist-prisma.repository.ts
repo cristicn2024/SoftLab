@@ -134,9 +134,9 @@ function isUniqueViolation(error: unknown): boolean {
 export class WorklistPrismaRepository implements WorklistRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findReadyOrders(tenantId: number): Promise<OrderRecord[]> {
+  async findReadyOrders(tenantId: number, branchId?: number): Promise<OrderRecord[]> {
     const rows = await this.prisma.order.findMany({
-      where: { tenantId, samples: { some: { status: { in: READY_SAMPLE_STATUSES } } } },
+      where: { tenantId, branchId, samples: { some: { status: { in: READY_SAMPLE_STATUSES } } } },
       orderBy: { createdAt: 'asc' },
       include: ORDER_INCLUDE,
     });

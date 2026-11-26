@@ -26,7 +26,7 @@ describe('HU 1.2 pantalla de referencias', () => {
     fireEvent.change(screen.getByLabelText('Referencia visible'), { target: { value: 'Descripción libre' } });
     fireEvent.click(screen.getByRole('button', { name: 'Guardar nueva versión' }));
     await screen.findByText('Versión guardada en bitácora.');
-    expect(api.post).toHaveBeenCalledWith('/referencias/7', expect.objectContaining({ rules: [expect.objectContaining({ type: 'text', method: 'Método QA', low: null })] }), expect.objectContaining({ headers: expect.objectContaining({ 'x-user-role': expect.any(String) }) }));
+    expect(api.post).toHaveBeenCalledWith('/referencias/7', expect.objectContaining({ rules: [expect.objectContaining({ type: 'text', method: 'Método QA', low: null })] }));
   });
   it('muestra el error del servidor al rechazar un rango', async () => {
     vi.mocked(api.post).mockRejectedValue({ response: { data: { error: { mensaje: 'Hay huecos de edad' } } } });

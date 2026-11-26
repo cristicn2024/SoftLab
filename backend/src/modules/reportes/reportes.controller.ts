@@ -1,3 +1,4 @@
+import { EnSucursal, Permiso } from '../../auth/decoradores/permiso.decorator';
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -16,10 +17,12 @@ function actorDe(sesion: Sesion): Actor {
 }
 
 @ApiTags('reportes')
+@Permiso('entrega')
 @Controller()
 export class ReportesController {
   constructor(private readonly servicio: ReportesService) {}
 
+  @EnSucursal('order', 'orderId')
   @Get('reports/orders/:orderId/pdf')
   obtener(
     @UsuarioActual() sesion: Sesion,
@@ -31,6 +34,7 @@ export class ReportesController {
   }
 
   @HttpCode(200)
+  @EnSucursal('order', 'orderId')
   @Post('reports/orders/:orderId/pdf')
   emitir(
     @UsuarioActual() sesion: Sesion,

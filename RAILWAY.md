@@ -8,10 +8,11 @@ servicios de aplicación a este repositorio y a la rama `integracion`.
 - Root Directory: `/backend`. Railway detecta el Dockerfile.
 - `DATABASE_URL`: referencia a `MYSQL_URL` del servicio MySQL (red privada).
 - `PORT`: `4000`.
+- Configura `SESION_SECRETO` y `ORIGENES_PERMITIDOS` según el README.
 - Healthcheck: `/api/health`.
 - Generar dominio HTTPS con puerto destino 4000.
 - En una base nueva de demo, ejecutar `npx prisma db push --skip-generate`
-  como comando previo al despliegue. No agregar `--accept-data-loss`.
+  y después `npx tsx prisma/actualizar-accesos.ts` como preparación del esquema. No agregar `--accept-data-loss`.
 - Una vez disponible la base, ejecutar `npm run db:seed` en el servicio backend.
   El seed borra y vuelve a crear el laboratorio demo (id 1) y no toca otros
   laboratorios. Ejecutarlo solo en una base de demo.
@@ -23,7 +24,7 @@ local ni publicar credenciales en el repositorio.
 
 - Root Directory: `/frontend`. Railway detecta el Dockerfile.
 - `VITE_API_URL`: `https://DOMINIO-DEL-BACKEND/api`.
-- `VITE_TENANT_ID`: `1`.
+- Usa dominios HTTPS del mismo sitio para el frontend y la API.
 - Generar dominio HTTPS con puerto destino 80 (Nginx).
 - Las variables VITE se incorporan al compilar: redesplegar si cambian.
 
@@ -32,6 +33,6 @@ local ni publicar credenciales en el repositorio.
 Abrir la página, recargar una ruta interna y verificar cobro y entrega. Usar los
 IDs impresos por el seed: una orden liquidada debe emitir PDF y una con saldo
 debe responder PAYMENT_REQUIRED. Mantener solo datos ficticios en esta demo:
-la identidad y el rol actuales provienen de encabezados del navegador.
+las cuentas de prueba están documentadas en el README.
 
 Revisar el plan y el consumo en Railway antes de habilitar recursos de pago.

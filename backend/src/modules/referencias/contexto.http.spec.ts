@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { ReferenciasModule } from './referencias.module';
 import { PrismaService } from '../../prisma/prisma.service';
-import { configurarApp } from '../../configurar-app';
+import { configurarApp } from '../../__tests__/sesion-de-prueba';
 
 describe('Contexto de referencia de una orden', () => {
   let app: INestApplication;

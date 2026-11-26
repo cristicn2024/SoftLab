@@ -1,4 +1,4 @@
-import type { Rol } from './dominio/sesion';
+import type { Rol } from '../auth/dominio/sesion';
 
 const ROLES_VALIDOS: Rol[] = ['admin', 'receptionist', 'chemist', 'doctor'];
 const ALIAS_DE_ADMIN = ['administrador', 'administradora'];

@@ -1,3 +1,4 @@
+import { LoginPage } from './pages/LoginPage'
 import ReferenciasPage from './pages/ReferenciasPage'
 import CatalogoPage from './pages/CatalogoPage'
 import { lazy, Suspense } from 'react'
@@ -24,25 +25,26 @@ export default function App() {
       <BrowserRouter>
         <Suspense fallback={<div>Cargando...</div>}>
           <Routes>
+            <Route path="/login" element={<LoginPage />} />
             <Route element={<Layout />}>
               <Route path="resultados/referencias" element={<ReferenciasPage />} />
               <Route path="catalogo/estudios" element={<CatalogoPage kind="studies" />} />
               <Route path="catalogo/estudios/externos" element={<PaginaEstudiosExternos />} />
               <Route path="catalogo/estudios/:idEstudio/editar" element={<PaginaEditarEstudio />} />
               <Route path="catalogo/perfiles" element={<CatalogoPage kind="profiles" />} />
-              <Route path="/" element={<Navigate to="/recepcion/nueva-orden" replace />} />
+              <Route path="/panel" element={<main className="sl-pagina"><h1>Panel de trabajo</h1><p>Consulta con tu administrador los módulos asignados a tu rol.</p></main>} />
               <Route path="recepcion/nueva-orden" element={<OrderCapturePage />} />
+              <Route path="resultados/ejemplo" element={<PaginaEjemplo />} />
               <Route path="resultados/entrega" element={<PaginaEntrega />} />
               <Route path="ordenes/cobro" element={<PaginaCobro />} />
               <Route path="ordenes/corte-caja" element={<CashCutPage />} />
               <Route path="resultados/lista-de-trabajo" element={<PaginaListaDeTrabajo />} />
               <Route path="resultados/lista-de-trabajo/:idOrden" element={<PaginaCapturaDeResultados />} />
               <Route path="resultados/plantillas" element={<ReportTemplatePage />} />
-              <Route path="resultados/ejemplo" element={<PaginaEjemplo />} />
             </Route>
             <Route path="corte-caja" element={<Navigate to="/ordenes/corte-caja" replace />} />
             <Route path="plantillas" element={<Navigate to="/resultados/plantillas" replace />} />
-            <Route path="*" element={<Navigate to="/recepcion/nueva-orden" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </Suspense>
       </BrowserRouter>

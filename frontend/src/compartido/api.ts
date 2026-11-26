@@ -1,14 +1,20 @@
 import axios from 'axios'
 
 const URL_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api'
-const ID_LABORATORIO = import.meta.env.VITE_TENANT_ID ?? '1'
 
 export const api = axios.create({
   baseURL: URL_BASE,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-    'x-tenant-id': ID_LABORATORIO,
   },
+})
+
+api.interceptors.response.use(response => response, error => {
+  if (error.response?.status === 401 && !error.config?.url?.startsWith('/auth/')) {
+    window.dispatchEvent(new Event('softlab:sesion-expirada'))
+  }
+  return Promise.reject(error)
 })
 
 type CuerpoDeError = { error?: string | { tipo?: string; mensaje?: string } }

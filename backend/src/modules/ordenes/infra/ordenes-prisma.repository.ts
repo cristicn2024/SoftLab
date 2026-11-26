@@ -73,9 +73,9 @@ export class OrdenesPrismaRepository implements OrdenesRepository {
     return result;
   }
 
-  findPendingOrderSince(tenantId: number, patientId: number, since: Date): Promise<{ id: number } | null> {
+  findPendingOrderSince(tenantId: number, patientId: number, since: Date, branchId?: number): Promise<{ id: number } | null> {
     return this.prisma.order.findFirst({
-      where: { tenantId, patientId, createdAt: { gte: since }, status: 'pending' },
+      where: { tenantId, patientId, ...(branchId === undefined ? {} : { branchId }), createdAt: { gte: since }, status: 'pending' },
       select: { id: true },
     });
   }

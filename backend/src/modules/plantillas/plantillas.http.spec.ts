@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { configurarApp } from '../../configurar-app';
+import { configurarApp } from '../../__tests__/sesion-de-prueba';
 import { FakeRepository } from './dominio/plantillas.escenarios';
 import { PlantillasModule } from './plantillas.module';
 import { PLANTILLAS_REPOSITORY } from './plantillas.tokens';

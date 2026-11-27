@@ -736,6 +736,8 @@ model ShipmentOrder {
   @@index([testId])
   @@index([externalLabId])
   @@map("shipment_orders")
+}
+
 // TODO HU 1–3: administrar estos roles y asignaciones desde sus propios módulos.
 model AccessRole {
   id Int @id @default(autoincrement())

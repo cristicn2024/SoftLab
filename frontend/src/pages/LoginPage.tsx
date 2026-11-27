@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 import { api, mensajeDeError } from '../compartido/api';
 import { useSesion, type DatosSesion } from '../compartido/sesionContext';
 import { panelInicial } from '../compartido/layout/menu';
@@ -38,6 +39,10 @@ export function LoginPage() {
       if ('sesion' in data) establecer(data.sesion);
       else setSucursales(data.sucursales);
     } catch (err) {
+      if (elegir && isAxiosError(err) && err.response?.status === 401) {
+        setSucursales([]);
+        setSucursal('');
+      }
       setError(mensajeDeError(err));
     } finally { setOcupado(false); }
   }

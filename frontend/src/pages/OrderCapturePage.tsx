@@ -47,8 +47,6 @@ function mensajeDelServidor(error: unknown, porDefecto: string): string {
   return porDefecto;
 }
 
-const ENCABEZADOS_USUARIO = { 'x-user-name': encodeURIComponent(SESION.usuario), 'x-user-role': encodeURIComponent(SESION.rol) };
-
 function textoDeEnvios(folios: string[] | undefined): string {
   if (folios === undefined || folios.length === 0) return '';
   return `\nÓrdenes de envío a laboratorio externo: ${folios.join(', ')}`;
@@ -251,7 +249,7 @@ const addConcept = (concept: Concept) => {
         totalAmount,
         reviewedInstructionConflicts: instructionReviewConfirmed,
         exceptionApprovals: approvals,
-      }, { headers: ENCABEZADOS_USUARIO });
+      });
       alert(`¡Orden capturada exitosamente! Folio: ${res.data.folio}${textoDeEnvios(res.data.shipmentFolios)}`);
       setOrderItems([]);
       setWarnings([]);

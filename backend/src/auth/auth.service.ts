@@ -76,6 +76,7 @@ export class AuthService {
       await registrarAuditoria(this.prisma, 'LOGIN_FALLIDO', correo, ip, cuenta);
       throw new UnauthorizedException(ERROR_LOGIN);
     }
+    await this.intentos.liberar(claves);
     const asignadas = sucursales(cuenta);
     if (!asignadas.length) {
       await registrarAuditoria(this.prisma, 'LOGIN_FALLIDO', correo, ip, cuenta);
@@ -85,7 +86,6 @@ export class AuthService {
       await this.prisma.user.updateMany({ where: { id: cuenta.id, passwordHash: cuenta.passwordHash },
         data: { passwordHash: await hashClave(clave) } });
     }
-    await this.intentos.liberar(claves);
     return this.prisma.$transaction(tx => this.emitir(tx, cuenta, asignadas.length === 1 ? asignadas[0].id : null, ip));
   }
 

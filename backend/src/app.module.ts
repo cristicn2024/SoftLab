@@ -13,8 +13,7 @@ import { WorklistModule } from './modules/worklist/worklist.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [ReferenciasModule, CatalogoModule, ExternosModule, PrismaModule, HealthModule, WorklistModule, CobroModule, PlantillasModule, ReportesModule, OrdenesModule, CorteCajaModule],
-  imports: [AuthModule, ReferenciasModule, CatalogoModule, PrismaModule, HealthModule, WorklistModule, CobroModule, PlantillasModule, ReportesModule, OrdenesModule, CorteCajaModule],
+  imports: [AuthModule, ReferenciasModule, CatalogoModule, ExternosModule, PrismaModule, HealthModule, WorklistModule, CobroModule, PlantillasModule, ReportesModule, OrdenesModule, CorteCajaModule],
 })
 export class AppModule {}
 

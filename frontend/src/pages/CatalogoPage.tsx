@@ -17,7 +17,6 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
   const [busy, setBusy] = useState(false);
   const [audits, setAudits] = useState<Audit[]>([]);
   const [showAudit, setShowAudit] = useState(false);
-  const admin = ['admin', 'Administradora', 'Administrador'].includes(SESION.rol);
   const verBitacora = (useLocation().state as { verBitacora?: boolean } | null)?.verBitacora === true;
   const sesion = useSesionActiva()
   const admin = sesion.permisos.includes('catalogo.editar');
@@ -29,8 +28,7 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
   useEffect(() => {
     let active = true;
     setEditing(false); setShowAudit(false); setError('');
-    api.get('/catalogo', { headers }).then(r => { if (active) setCatalog(r.data); }).catch(e => { if (active) setError(message(e)); });
-    if (verBitacora && kind === 'studies') api.get('/catalogo/bitacora', { headers }).then(r => { if (active) { setAudits(r.data); setShowAudit(true); } }).catch(e => { if (active) setError(message(e)); });
+    if (verBitacora && kind === 'studies') api.get('/catalogo/bitacora').then(r => { if (active) { setAudits(r.data); setShowAudit(true); } }).catch(e => { if (active) setError(message(e)); });
     api.get('/catalogo').then(r => { if (active) setCatalog(r.data); }).catch(e => { if (active) setError(message(e)); });
     return () => { active = false; };
   }, [kind, verBitacora]);
@@ -53,9 +51,8 @@ export default function CatalogoPage({ kind }: { kind: 'studies' | 'profiles' })
   return <main className="sl-pagina">
     <h1>{kind === 'studies' ? 'Estudios' : 'Perfiles'}</h1>
     {admin && <><button onClick={() => edit()}>Crear {kind === 'studies' ? 'estudio' : 'perfil'}</button>{' '}
-      <button onClick={async () => { try { setAudits((await api.get('/catalogo/bitacora', { headers })).data); setShowAudit(true); } catch (e) { setError(message(e)); } }}>Ver bitácora</button>{' '}
+      <button onClick={async () => { try { setAudits((await api.get('/catalogo/bitacora')).data); setShowAudit(true); } catch (e) { setError(message(e)); } }}>Ver bitácora</button>{' '}
       {kind === 'studies' && <Link to="/catalogo/estudios/externos">Estudios externos</Link>}</>}
-      <button onClick={async () => { try { setAudits((await api.get('/catalogo/bitacora')).data); setShowAudit(true); } catch (e) { setError(message(e)); } }}>Ver bitácora</button></>}
     {error && <p role="alert">{error}</p>}
     {editing && <form onSubmit={save} style={{ display: 'grid', gap: 12, maxWidth: 640, margin: '24px 0' }}>
       <h2>{id ? 'Editar' : 'Crear'} {kind === 'studies' ? 'estudio' : 'perfil'}</h2>
